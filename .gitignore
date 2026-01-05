@@ -1,0 +1,21 @@
+/*
+!/.gitignore
+
+# Track /etc/nginx
+!/etc/
+/etc/*
+!/etc/nginx/
+
+# Track /var/www/
+!/var/
+/var/*
+!/var/www/
+
+# Track /etc/nginx
+!/home/
+/home/*
+
+!/home/admin/
+/home/admin/*
+!/home/admin/smart-enclosure-backend/
+!/home/admin/smart-enclosure-frontend/

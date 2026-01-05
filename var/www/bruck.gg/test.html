@@ -1,0 +1,41 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Temperature Dashboard</title>
+  <link rel="stylesheet" href="css/dashboard.css">
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/apexcharts"></script>
+</head>
+<body>
+  <div class="dashboard-container">
+    <h1>Temperature Dashboard</h1>
+
+    <div class="zones">
+      <div class="zone-box hot">
+        <h2>Warm Zone</h2>
+        <p class="temperature">XX.X°F</p>
+      </div>
+      <div class="zone-box transition">
+        <h2>Transition Zone</h2>
+        <p class="temperature">XX.X°F</p>
+      </div>
+      <div class="zone-box cold">
+        <h2>Cold Zone</h2>
+        <p class="temperature">XX.X°F</p>
+      </div>
+    </div>
+
+    <h3>Sunrise: <span id="sunrise">--:--</span></h3>
+    <h3>Sunset:  <span id="sunset">--:--</span></h3>
+
+    <h2>Historical Temperature Chart</h2>
+    <input type="date" id="datepicker" />
+    <div id="temp-chart"></div>
+  </div>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/dayjs.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/dayjs@1/plugin/utc.js"></script>
+  <script src="js/dashboard.js"></script>
+</body>
+</html>

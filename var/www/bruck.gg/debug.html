@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Smart Enclosure – Debug</title>
+<style>
+  body { font-family: system-ui, Arial, sans-serif; margin: 0; background:#0b0c10; color:#eaecef; }
+  header { padding: 14px 18px; background:#13151a; border-bottom:1px solid #222; display:flex; gap:16px; align-items:center; }
+  .pill { padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid #333; }
+  .ok { background:#0d2f16; color:#8aff9f; border-color:#1e4b2a; }
+  .bad { background:#3a1214; color:#ff8f8f; border-color:#5a1e21; }
+  main { padding: 16px; display:grid; grid-template-columns: 1.1fr 0.9fr; gap:16px; }
+  .card { background:#11141a; border:1px solid #222630; border-radius:12px; overflow:hidden; }
+  .card h2 { margin:0; padding:12px 14px; border-bottom:1px solid #222630; font-size:15px; letter-spacing:.3px; background:#151923; }
+  .card .body { padding:12px 14px; }
+  table { width:100%; border-collapse:collapse; font-size:14px; }
+  th, td { border-bottom:1px solid #232732; padding:6px 8px; text-align:left; }
+  th { color:#9fb0c9; font-weight:600; }
+  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+  .logs { height: 280px; overflow:auto; background:#0c0f14; border:1px solid #1e2230; border-radius:8px; padding:8px; }
+  .logline { white-space: pre-wrap; font-size:12px; margin:0; padding:2px 0; }
+  .logline .ts { color:#7aa2ff; }
+  .logline.warn .msg { color:#ffdc7a; }
+  .logline.error .msg { color:#ff8c8c; }
+  .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
+  .kvs { display:grid; grid-template-columns: 160px 1fr; gap:6px 10px; font-size:13px; }
+  .kvs div:nth-child(odd) { color:#9fb0c9; }
+  .small { font-size:12px; color:#9fb0c9; }
+</style>
+</head>
+<body>
+  <header>
+    <div><strong>Smart Enclosure – Debug</strong></div>
+    <div id="piStatus" class="pill">Pi: …</div>
+    <div id="awsStatus" class="pill">AWS: …</div>
+  </header>
+
+  <main>
+    <section class="card">
+      <h2>Live Sensors (current, polled fast)</h2>
+      <div class="body">
+        <div class="small">Source: <span class="mono">/pi/api/sensors-now</span> via API proxy</div>
+        <table id="sensorTable">
+          <thead><tr><th>Sensor</th><th>Temp (°F)</th><th>Humidity (%)</th><th>Pressure (hPa)</th></tr></thead>
+          <tbody></tbody>
+        </table>
+        <div class="small">Last updated: <span id="liveStamp" class="mono">–</span></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Health</h2>
+      <div class="body grid-2">
+        <div>
+          <div class="small"><strong>Raspberry Pi</strong> (<span class="mono">/health</span>)</div>
+          <div id="piKvs" class="kvs"></div>
+        </div>
+        <div>
+          <div class="small"><strong>AWS</strong> (<span class="mono">/health</span>)</div>
+          <div id="awsKvs" class="kvs"></div>
+        </div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Logs – Pi (server_min.js)</h2>
+      <div class="body">
+        <div class="logs" id="piLogs"></div>
+      </div>
+    </section>
+
+    <section class="card">
+      <h2>Logs – AWS (server.js)</h2>
+      <div class="body">
+        <div class="logs" id="awsLogs"></div>
+      </div>
+    </section>
+  </main>
+
+<script>
+const API = 'https://api.bruck.gg';      // your HTTPS domain
+const POLL_MS = 1000;                     // sensor poll cadence (tweakable)
+
+// ---- Health badges
+function setBadge(el, ok) {
+  el.className = 'pill ' + (ok ? 'ok' : 'bad');
+  el.textContent = (el.id === 'piStatus' ? 'Pi: ' : 'AWS: ') + (ok ? 'running' : 'down');
+}
+async function fetchJson(url) { const r = await fetch(url, { credentials:'include' }); if (!r.ok) throw new Error(r.status); return r.json(); }
+function kvsFill(el, obj) {
+  el.innerHTML = '';
+  for (const [k,v] of Object.entries(obj)) {
+    const kdiv = document.createElement('div'); kdiv.textContent = k;
+    const vdiv = document.createElement('div'); vdiv.textContent = (v===null||v===undefined)?'':String(v);
+    el.appendChild(kdiv); el.appendChild(vdiv);
+  }
+}
+
+// ---- Health poll
+async function refreshHealth() {
+  try {
+    const pi = await fetchJson(API + '/pi/health'); // optional: if you add a simple proxy; else fetch 'http://<tailscale>:3010/health'
+    setBadge(document.getElementById('piStatus'), true);
+    kvsFill(document.getElementById('piKvs'), {
+      status: pi.status, pid: pi.pid, uptime_s: pi.uptime_s, memory_mb: pi.memory_mb,
+      lastSensorReadAt: pi.lastSensorReadAt, lastPostToAwsAt: pi.lastPostToAwsAt, now: pi.now
+    });
+  } catch { setBadge(document.getElementById('piStatus'), false); }
+
+  try {
+    const aws = await fetchJson(API + '/health');
+    setBadge(document.getElementById('awsStatus'), true);
+    kvsFill(document.getElementById('awsKvs'), {
+      status: aws.status, pid: aws.pid, uptime_s: aws.uptime_s, memory_mb: aws.memory_mb,
+      db: aws.db, lastDbInsertAt: aws.lastDbInsertAt, now: aws.now
+    });
+  } catch { setBadge(document.getElementById('awsStatus'), false); }
+}
+
+// ---- Sensors (live)
+async function refreshSensors() {
+  try {
+    const rows = await fetchJson(API + '/pi/api/sensors-now');
+    const tbody = document.querySelector('#sensorTable tbody');
+    tbody.innerHTML = '';
+    rows.forEach(r => {
+      const tr = document.createElement('tr');
+      tr.innerHTML = `
+        <td class="mono">${r.sensor_id}</td>
+        <td>${fmt(r.temperature)}</td>
+        <td>${fmt(r.humidity)}</td>
+        <td>${fmt(r.pressure)}</td>`;
+      tbody.appendChild(tr);
+    });
+    document.getElementById('liveStamp').textContent = new Date().toLocaleTimeString();
+  } catch (e) {
+    // leave table as-is on failure
+  }
+}
+function fmt(x){ return (x===null||x===undefined) ? '—' : Number(x).toFixed(1); }
+
+// ---- Logs (SSE)
+function startLogStream(url, containerId) {
+  const cont = document.getElementById(containerId);
+  const es = new EventSource(url, { withCredentials: true });
+  es.onmessage = (ev) => {
+    try {
+      const { ts, level, msg } = JSON.parse(ev.data);
+      const p = document.createElement('div');
+      p.className = 'logline ' + (level || 'log');
+      p.innerHTML = `<span class="ts">${ts}</span> <span class="mono">[${level}]</span> <span class="msg">${escapeHtml(msg)}</span>`;
+      cont.appendChild(p);
+      cont.scrollTop = cont.scrollHeight;
+    } catch {}
+  };
+  es.onerror = () => { /* keep trying; browser will retry SSE */ };
+}
+function escapeHtml(s){ return s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+
+// Kickoff
+refreshHealth();
+refreshSensors();
+setInterval(refreshHealth, 5000);
+setInterval(refreshSensors, POLL_MS);
+
+// streams
+startLogStream(API + '/pi/logs', 'piLogs');
+startLogStream(API + '/logs',     'awsLogs');
+</script>
+</body>
+</html>

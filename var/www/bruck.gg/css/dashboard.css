@@ -1,0 +1,184 @@
+body {
+    margin: 0;
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: #f4f4f4;
+    color: #333;
+}
+
+.dashboard-container {
+    max-width: 1000px;
+    margin: 0 auto;
+    padding: 20px;
+    text-align: center;
+}
+
+h1 {
+    margin-bottom: 30px;
+    font-size: 2rem;
+}
+
+.zones {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 20px;
+    justify-content: center;
+}
+
+.zone-box {
+    width: 100%;
+    max-width: 300px;
+    background-color: white;
+    padding: 15px 10px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    border-left: 6px solid #ccc;
+    box-sizing: border-box;
+}
+
+.zone-box h2 {
+    margin: 0 0 8px;
+    font-size: 1.2rem;
+}
+
+.temperature {
+    font-size: 2rem;
+    font-weight: bold;
+    margin: 0;
+}
+
+.relays {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 20px;
+    margin-top: 20px;
+}
+
+.relay-box {
+    background-color: white;
+    padding: 10px 20px;
+    border-radius: 10px;
+    box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    min-width: 250px;
+    justify-content: space-between;
+}
+
+.relay-label {
+    font-size: 1.2rem;
+}
+
+/* Toggle switch styling */
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 50px;
+    height: 28px;
+}
+
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background-color: #ccc;
+    transition: 0.4s;
+    border-radius: 34px;
+}
+
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 4px;
+    bottom: 4px;
+    background-color: white;
+    transition: 0.4s;
+    border-radius: 50%;
+}
+
+input:checked + .slider {
+    background-color: #4CAF50;
+}
+
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+
+
+/* Zone-specific colors */
+.hot {
+    border-left-color: #e74c3c;
+}
+
+.transition {
+    border-left-color: #f1c40f;
+}
+
+.cold {
+    border-left-color: #3498db;
+}
+
+/* Responsive layout */
+@media (min-width: 769px) {
+    .zone-box {
+    flex: 0 0 calc(33.33% - 20px);
+    }
+}
+
+.relay-timer-container {
+  position: relative;
+  max-width: 600px;
+  margin: 5px auto 0;
+}
+
+.range-slider {
+  position: relative;
+  height: 10px;
+  background-color: #ccc;
+  border-radius: 5px;
+  margin: 40px 0;
+}
+
+.range-fill {
+  position: absolute;
+  height: 100%;
+  background-color: #4CAF50;
+  border-radius: 5px;
+  z-index: 1;
+}
+
+.thumb {
+  position: absolute;
+  top: -10px;
+  width: 24px;
+  height: 24px;
+  background: white;
+  border: 2px solid #4CAF50;
+  border-radius: 50%;
+  cursor: pointer;
+  z-index: 2;
+}
+
+.thumb-label {
+  position: absolute;
+  top: -30px;
+  background: #4CAF50;
+  color: white;
+  padding: 3px 6px;
+  border-radius: 4px;
+  font-size: 12px;
+  white-space: nowrap;
+  transform: translateX(-50%);
+}
