@@ -1,172 +1,366 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="utf-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1" />
-<title>Smart Enclosure – Debug</title>
-<style>
-  body { font-family: system-ui, Arial, sans-serif; margin: 0; background:#0b0c10; color:#eaecef; }
-  header { padding: 14px 18px; background:#13151a; border-bottom:1px solid #222; display:flex; gap:16px; align-items:center; }
-  .pill { padding:4px 10px; border-radius:999px; font-size:12px; border:1px solid #333; }
-  .ok { background:#0d2f16; color:#8aff9f; border-color:#1e4b2a; }
-  .bad { background:#3a1214; color:#ff8f8f; border-color:#5a1e21; }
-  main { padding: 16px; display:grid; grid-template-columns: 1.1fr 0.9fr; gap:16px; }
-  .card { background:#11141a; border:1px solid #222630; border-radius:12px; overflow:hidden; }
-  .card h2 { margin:0; padding:12px 14px; border-bottom:1px solid #222630; font-size:15px; letter-spacing:.3px; background:#151923; }
-  .card .body { padding:12px 14px; }
-  table { width:100%; border-collapse:collapse; font-size:14px; }
-  th, td { border-bottom:1px solid #232732; padding:6px 8px; text-align:left; }
-  th { color:#9fb0c9; font-weight:600; }
-  .mono { font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
-  .logs { height: 280px; overflow:auto; background:#0c0f14; border:1px solid #1e2230; border-radius:8px; padding:8px; }
-  .logline { white-space: pre-wrap; font-size:12px; margin:0; padding:2px 0; }
-  .logline .ts { color:#7aa2ff; }
-  .logline.warn .msg { color:#ffdc7a; }
-  .logline.error .msg { color:#ff8c8c; }
-  .grid-2 { display:grid; grid-template-columns: 1fr 1fr; gap:12px; }
-  .kvs { display:grid; grid-template-columns: 160px 1fr; gap:6px 10px; font-size:13px; }
-  .kvs div:nth-child(odd) { color:#9fb0c9; }
-  .small { font-size:12px; color:#9fb0c9; }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Enclosure Debug Dashboard</title>
+    <style>
+        :root {
+            --bg-dark: #121212;
+            --bg-card: #1e1e1e;
+            --text-main: #e0e0e0;
+            --text-muted: #9e9e9e;
+            --accent: #bb86fc;
+            --success: #03dac6;
+            --danger: #cf6679;
+            --border: #333;
+        }
+
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            background-color: var(--bg-dark);
+            color: var(--text-main);
+            margin: 0;
+            padding: 20px;
+        }
+
+        h1, h2, h3 { margin-top: 0; }
+
+        .dashboard-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 20px;
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+
+        @media (min-width: 900px) {
+            .dashboard-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+            .video-section {
+                grid-column: 1 / -1; 
+            }
+        }
+
+        .card {
+            background-color: var(--bg-card);
+            border: 1px solid var(--border);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        }
+
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+        }
+
+        .card-header h2 {
+            margin: 0;
+        }
+
+        /* --- Video --- */
+        .video-container {
+            position: relative;
+            width: 100%;
+            padding-bottom: 56.25%; 
+            background: #000;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        .video-container iframe {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            border: none;
+        }
+
+        /* --- Sensors --- */
+        .sensor-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 10px;
+        }
+        .sensor-box {
+            background: #2a2a2a;
+            padding: 10px;
+            border-radius: 6px;
+            border-left: 4px solid var(--text-muted);
+            opacity: 1;
+        }
+        .sensor-box.online { border-left-color: var(--success); }
+        .sensor-box.error { border-left-color: var(--danger); }
+        .sensor-box.offline { opacity: 0.5; border-left-color: var(--border); }
+        .sensor-box .title { font-size: 0.85em; color: var(--text-muted); text-transform: uppercase; }
+        .sensor-box .reading { font-size: 1.2em; font-weight: bold; margin: 4px 0; }
+
+        /* --- Relays --- */
+        .relay-item {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            background: #2a2a2a;
+            padding: 15px;
+            border-radius: 6px;
+            margin-bottom: 10px;
+            flex-wrap: wrap;
+            gap: 15px;
+        }
+        .relay-info { flex: 1; min-width: 150px; }
+        .relay-status { 
+            font-weight: bold; 
+            text-transform: uppercase;
+        }
+        .status-on { color: var(--success); }
+        .status-off { color: var(--text-muted); }
+        
+        .relay-controls {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        /* Form Inputs */
+        input[type="time"] {
+            background: var(--bg-dark);
+            color: var(--text-main);
+            border: 1px solid var(--border);
+            padding: 5px;
+            border-radius: 4px;
+            color-scheme: dark;
+        }
+        
+        button {
+            background-color: var(--accent);
+            color: #000;
+            border: none;
+            padding: 8px 16px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+        button:hover { opacity: 0.8; }
+        button.toggle-btn { min-width: 90px; }
+        button.toggle-btn.is-on { background-color: var(--success); }
+        button.toggle-btn.is-off { background-color: var(--text-muted); color: #fff; }
+        
+        .schedule-group {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 0.9em;
+        }
+    </style>
 </head>
 <body>
-  <header>
-    <div><strong>Smart Enclosure – Debug</strong></div>
-    <div id="piStatus" class="pill">Pi: …</div>
-    <div id="awsStatus" class="pill">AWS: …</div>
-  </header>
 
-  <main>
-    <section class="card">
-      <h2>Live Sensors (current, polled fast)</h2>
-      <div class="body">
-        <div class="small">Source: <span class="mono">/pi/api/sensors-now</span> via API proxy</div>
-        <table id="sensorTable">
-          <thead><tr><th>Sensor</th><th>Temp (°F)</th><th>Humidity (%)</th><th>Pressure (hPa)</th></tr></thead>
-          <tbody></tbody>
-        </table>
-        <div class="small">Last updated: <span id="liveStamp" class="mono">–</span></div>
-      </div>
-    </section>
-
-    <section class="card">
-      <h2>Health</h2>
-      <div class="body grid-2">
-        <div>
-          <div class="small"><strong>Raspberry Pi</strong> (<span class="mono">/health</span>)</div>
-          <div id="piKvs" class="kvs"></div>
+    <h1>Enclosure Settings & Debug</h1>
+    
+    <div class="dashboard-grid">
+        
+        <div class="card video-section">
+            <h2>Live Feed</h2>
+            <div class="video-container">
+                <iframe src="https://api.bruck.gg/pi/cam/" allowfullscreen></iframe>
+            </div>
         </div>
-        <div>
-          <div class="small"><strong>AWS</strong> (<span class="mono">/health</span>)</div>
-          <div id="awsKvs" class="kvs"></div>
+
+        <div class="card">
+            <div class="card-header">
+                <h2>Sensor Array</h2>
+                <button id="unit-toggle" onclick="toggleTempUnit()" style="background: #333; color: white;">Show °C</button>
+            </div>
+            <div id="sensor-container" class="sensor-grid">
+                <p>Loading sensors...</p>
+            </div>
         </div>
-      </div>
-    </section>
 
-    <section class="card">
-      <h2>Logs – Pi (server_min.js)</h2>
-      <div class="body">
-        <div class="logs" id="piLogs"></div>
-      </div>
-    </section>
+        <div class="card">
+            <h2>Relays & Schedules</h2>
+            <div id="relay-container">
+                <p>Loading relays...</p>
+            </div>
+        </div>
 
-    <section class="card">
-      <h2>Logs – AWS (server.js)</h2>
-      <div class="body">
-        <div class="logs" id="awsLogs"></div>
-      </div>
-    </section>
-  </main>
+    </div>
 
-<script>
-const API = 'https://api.bruck.gg';      // your HTTPS domain
-const POLL_MS = 1000;                     // sensor poll cadence (tweakable)
+    <script>
+        const API_BASE = 'https://api.bruck.gg/pi';
+        
+        // --- State Variables ---
+        let isFahrenheit = true; // Default to Fahrenheit
+        let lastSensorData = null; // Cache to re-render without refetching
 
-// ---- Health badges
-function setBadge(el, ok) {
-  el.className = 'pill ' + (ok ? 'ok' : 'bad');
-  el.textContent = (el.id === 'piStatus' ? 'Pi: ' : 'AWS: ') + (ok ? 'running' : 'down');
-}
-async function fetchJson(url) { const r = await fetch(url, { credentials:'include' }); if (!r.ok) throw new Error(r.status); return r.json(); }
-function kvsFill(el, obj) {
-  el.innerHTML = '';
-  for (const [k,v] of Object.entries(obj)) {
-    const kdiv = document.createElement('div'); kdiv.textContent = k;
-    const vdiv = document.createElement('div'); vdiv.textContent = (v===null||v===undefined)?'':String(v);
-    el.appendChild(kdiv); el.appendChild(vdiv);
-  }
-}
+        // --- Polling Timers ---
+        setInterval(fetchSensors, 5000);
+        setInterval(fetchRelaysAndSchedules, 10000);
 
-// ---- Health poll
-async function refreshHealth() {
-  try {
-    const pi = await fetchJson(API + '/pi/health'); // optional: if you add a simple proxy; else fetch 'http://<tailscale>:3010/health'
-    setBadge(document.getElementById('piStatus'), true);
-    kvsFill(document.getElementById('piKvs'), {
-      status: pi.status, pid: pi.pid, uptime_s: pi.uptime_s, memory_mb: pi.memory_mb,
-      lastSensorReadAt: pi.lastSensorReadAt, lastPostToAwsAt: pi.lastPostToAwsAt, now: pi.now
-    });
-  } catch { setBadge(document.getElementById('piStatus'), false); }
+        // Initial Load
+        fetchSensors();
+        fetchRelaysAndSchedules();
 
-  try {
-    const aws = await fetchJson(API + '/health');
-    setBadge(document.getElementById('awsStatus'), true);
-    kvsFill(document.getElementById('awsKvs'), {
-      status: aws.status, pid: aws.pid, uptime_s: aws.uptime_s, memory_mb: aws.memory_mb,
-      db: aws.db, lastDbInsertAt: aws.lastDbInsertAt, now: aws.now
-    });
-  } catch { setBadge(document.getElementById('awsStatus'), false); }
-}
+        // --- Temp Unit Toggle ---
+        function toggleTempUnit() {
+            isFahrenheit = !isFahrenheit;
+            document.getElementById('unit-toggle').innerText = isFahrenheit ? "Show °C" : "Show °F";
+            
+            // Re-render immediately if we have data
+            if (lastSensorData) {
+                renderSensors(lastSensorData);
+            }
+        }
 
-// ---- Sensors (live)
-async function refreshSensors() {
-  try {
-    const rows = await fetchJson(API + '/pi/api/sensors-now');
-    const tbody = document.querySelector('#sensorTable tbody');
-    tbody.innerHTML = '';
-    rows.forEach(r => {
-      const tr = document.createElement('tr');
-      tr.innerHTML = `
-        <td class="mono">${r.sensor_id}</td>
-        <td>${fmt(r.temperature)}</td>
-        <td>${fmt(r.humidity)}</td>
-        <td>${fmt(r.pressure)}</td>`;
-      tbody.appendChild(tr);
-    });
-    document.getElementById('liveStamp').textContent = new Date().toLocaleTimeString();
-  } catch (e) {
-    // leave table as-is on failure
-  }
-}
-function fmt(x){ return (x===null||x===undefined) ? '—' : Number(x).toFixed(1); }
+        // --- Fetch & Render Sensors ---
+        async function fetchSensors() {
+            try {
+                const res = await fetch(`${API_BASE}/sensors`);
+                const data = await res.json();
+                lastSensorData = data; // Cache it
+                renderSensors(data);
+            } catch (err) {
+                console.error("Failed to fetch sensors", err);
+            }
+        }
 
-// ---- Logs (SSE)
-function startLogStream(url, containerId) {
-  const cont = document.getElementById(containerId);
-  const es = new EventSource(url, { withCredentials: true });
-  es.onmessage = (ev) => {
-    try {
-      const { ts, level, msg } = JSON.parse(ev.data);
-      const p = document.createElement('div');
-      p.className = 'logline ' + (level || 'log');
-      p.innerHTML = `<span class="ts">${ts}</span> <span class="mono">[${level}]</span> <span class="msg">${escapeHtml(msg)}</span>`;
-      cont.appendChild(p);
-      cont.scrollTop = cont.scrollHeight;
-    } catch {}
-  };
-  es.onerror = () => { /* keep trying; browser will retry SSE */ };
-}
-function escapeHtml(s){ return s.replace(/[&<>"']/g,m=>({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[m])); }
+        function renderSensors(sensorData) {
+            const container = document.getElementById('sensor-container');
+            container.innerHTML = '';
 
-// Kickoff
-refreshHealth();
-refreshSensors();
-setInterval(refreshHealth, 5000);
-setInterval(refreshSensors, POLL_MS);
+            for (let i = 0; i < 16; i++) {
+                const key = `sensor_${i}`;
+                const sensor = sensorData[key];
+                
+                if (sensor) {
+                    const div = document.createElement('div');
+                    div.className = `sensor-box ${sensor.status}`;
+                    
+                    if (sensor.status === 'offline') {
+                        div.innerHTML = `
+                            <div class="title">Sensor ${i}</div>
+                            <div class="reading" style="color: var(--text-muted)">OFFLINE</div>
+                        `;
+                    } else if (sensor.status === 'error') {
+                        div.innerHTML = `
+                            <div class="title">Sensor ${i}</div>
+                            <div class="reading" style="color: var(--danger)">ERROR</div>
+                        `;
+                    } else {
+                        // Apply Temperature Conversion
+                        let displayTemp = sensor.temp;
+                        let unit = "°C";
+                        
+                        if (isFahrenheit) {
+                            displayTemp = ((sensor.temp * 9/5) + 32).toFixed(2);
+                            unit = "°F";
+                        }
 
-// streams
-startLogStream(API + '/pi/logs', 'piLogs');
-startLogStream(API + '/logs',     'awsLogs');
-</script>
+                        div.innerHTML = `
+                            <div class="title">Sensor ${i}</div>
+                            <div class="reading">${displayTemp}${unit} / ${sensor.humidity}%</div>
+                            <div class="title">${sensor.pressure} hPa</div>
+                        `;
+                    }
+                    container.appendChild(div);
+                }
+            }
+        }
+
+        // --- Fetch & Render Relays/Schedules ---
+        async function fetchRelaysAndSchedules() {
+            try {
+                const [statusRes, scheduleRes] = await Promise.all([
+                    fetch(`${API_BASE}/relays`),
+                    fetch(`${API_BASE}/schedules`)
+                ]);
+                
+                const statuses = await statusRes.json();
+                const schedules = await scheduleRes.json();
+                
+                renderRelays(statuses, schedules);
+            } catch (err) {
+                console.error("Failed to fetch relay data", err);
+            }
+        }
+
+        function renderRelays(statuses, schedules) {
+            const container = document.getElementById('relay-container');
+            container.innerHTML = '';
+
+            ['1', '2', '3', '4'].forEach(id => {
+                const state = statuses[id] || 'unknown';
+                const schedule = schedules.find(s => s.relay_id === id) || { on_time: '00:00', off_time: '00:00', mode: 'auto' };
+
+                const div = document.createElement('div');
+                div.className = 'relay-item';
+                
+                div.innerHTML = `
+                    <div class="relay-info">
+                        <div>Relay ${id} 
+                            <span style="font-size: 0.8em; color: var(--text-muted)">(${schedule.mode})</span>
+                        </div>
+                        <div class="relay-status status-${state}">STATE: ${state}</div>
+                    </div>
+                    
+                    <div class="relay-controls">
+                        <button class="toggle-btn is-${state}" onclick="toggleRelay('${id}', '${state}')">
+                            Turn ${state === 'on' ? 'OFF' : 'ON'}
+                        </button>
+                        
+                        <div class="schedule-group">
+                            <label>ON:</label>
+                            <input type="time" id="on_${id}" value="${schedule.on_time}">
+                            
+                            <label>OFF:</label>
+                            <input type="time" id="off_${id}" value="${schedule.off_time}">
+                            
+                            <button onclick="saveSchedule('${id}')" style="background: #333; color: white; padding: 5px 10px;">Save</button>
+                        </div>
+                    </div>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        // --- Action Handlers ---
+        async function toggleRelay(id, currentState) {
+            const newState = currentState === 'on' ? 'off' : 'on';
+            try {
+                await fetch(`${API_BASE}/relays/${id}/${newState}`, { method: 'POST' });
+                fetchRelaysAndSchedules();
+            } catch (err) {
+                alert(`Failed to toggle Relay ${id}`);
+                console.error(err);
+            }
+        }
+
+        async function saveSchedule(id) {
+            const onTime = document.getElementById(`on_${id}`).value;
+            const offTime = document.getElementById(`off_${id}`).value;
+            
+            try {
+                await fetch(`${API_BASE}/schedules/${id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        on_time: onTime,
+                        off_time: offTime,
+                        mode: 'auto' 
+                    })
+                });
+                alert(`Schedule for Relay ${id} saved!`);
+                fetchRelaysAndSchedules();
+            } catch (err) {
+                alert(`Failed to save schedule for Relay ${id}`);
+                console.error(err);
+            }
+        }
+    </script>
 </body>
 </html>
