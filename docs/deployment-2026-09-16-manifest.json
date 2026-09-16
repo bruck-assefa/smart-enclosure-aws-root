@@ -1,0 +1,16 @@
+{
+  "beardapi:/home/pi/enclosure/main.py": "2189d073377abfe32e6f4255afb43338a904288a5236b392515cd942b29d7b47",
+  "beardapi:/home/pi/enclosure/sensor_collector.py": "344b96686f2dfed22e3c68a5b8e139f9cf8b6bac201789cf683c2fc9c15a221c",
+  "beardapi:/home/pi/enclosure/sensor_worker.py": "b80c89e950d38d22c9127818d50bcf7a78e34363ac8f60b27a1cd1d3cb1320f3",
+  "beardapi:/home/pi/enclosure/sensor_contract.py": "d2da952c88851eda44f1b34b5135769f071e61c861ea7416d0a47cebeb461b9e",
+  "beardapi:/home/pi/enclosure/sensor_simulator.py": "97df02d60a8ccab05554f1f19d7d94eb63c1dd84b7fe984c19d2fc7f5794dc39",
+  "beardapi:/home/pi/enclosure/requirements.txt": "2244499ec35f0656dddff61542f9ef426e36abbcafb738a05e4bd18f080a8d66",
+  "aws-ec2:/home/admin/smart-enclosure-api/app.py": "b7d2093eca93717068ab7d0bfda6b0739e8db08b85518edcb8b64780daeff9b2",
+  "aws-ec2:/home/admin/smart-enclosure-api/sensor_contract.py": "d2da952c88851eda44f1b34b5135769f071e61c861ea7416d0a47cebeb461b9e",
+  "aws-ec2:/home/admin/smart-enclosure-api/sensor_simulator.py": "97df02d60a8ccab05554f1f19d7d94eb63c1dd84b7fe984c19d2fc7f5794dc39",
+  "aws-ec2:/home/admin/smart-enclosure-api/requirements.txt": "c69df9102ab37675252affdce96d7a157767ce5a78fe5687b75abf3e690be393",
+  "aws-ec2:/etc/systemd/system/smart-enclosure-api.service": "e8695fa7657d2cf57ed25cbb82dd4e21ec4736f91c09928bf04c41f81feb3e98",
+  "aws-ec2:/etc/nginx/sites-available/bruck.gg": "3f53bb8cf218f9cf71645e56f3356aa5d43a766f6fbba9be2f9346736295a3b2",
+  "aws-ec2:/var/www/bruck.gg/debug.html": "790942c56b2cf9eee42fc7f8a6d4f1bb31d19c73d5ad9f10e6edd2aba8802125",
+  "aws-ec2:/var/www/bruck.gg/js/enclosure.js": "68cc9609c43b9c6fa7af8b0087744c7e0fdbf181e1dfd3907860af0a3193e915"
+}

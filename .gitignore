@@ -19,3 +19,16 @@
 /home/admin/*
 !/home/admin/smart-enclosure-backend/
 !/home/admin/smart-enclosure-frontend/
+
+# Current Python gateway and reviewed startup definition
+!/home/admin/smart-enclosure-api/
+!/etc/systemd/
+/etc/systemd/*
+!/etc/systemd/system/
+/etc/systemd/system/*
+!/etc/systemd/system/smart-enclosure-api.service
+!/docs/
+!/tests/
+**/__pycache__/
+**/venv/
+**/.test-venv/
