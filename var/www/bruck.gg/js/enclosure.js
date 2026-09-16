@@ -160,10 +160,12 @@
       if (version !== generation) return;
       if (!data.snapshot || !Array.isArray(data.snapshot.sensors) || data.source !== source())
         throw new Error("Incompatible gateway response");
+      document.dispatchEvent(new CustomEvent("enclosure-storage", {detail: data.history}));
       snapshot = data; receivedAt = performance.now(); apiHealthy = true; failures = 0;
     } catch (error) {
       if (version !== generation) return;
       apiHealthy = false; failures++;
+      document.dispatchEvent(new CustomEvent("enclosure-storage", {detail: null}));
     } finally {
       if (inFlight === controller) inFlight = null;
       if (version === generation) {
@@ -209,6 +211,7 @@
     fahrenheit = !fahrenheit;
     $("unit-toggle").textContent = fahrenheit ? "Show °C" : "Show °F";
     renderSensors();
+    document.dispatchEvent(new CustomEvent("enclosure-units", {detail: fahrenheit}));
   });
   $("load-camera").addEventListener("click", () => {
     if (source() !== "hardware" || !apiHealthy || !snapshot?.live_available) return;

@@ -5,6 +5,7 @@ const path = require("node:path");
 const assert = require("node:assert/strict");
 const root = path.resolve(__dirname, "..");
 const html = fs.readFileSync(path.join(root, "var/www/bruck.gg/debug.html"), "utf8");
+const historyJs = fs.readFileSync(path.join(root, "var/www/bruck.gg/js/history.js"), "utf8");
 const js = fs.readFileSync(path.join(root, "var/www/bruck.gg/js/enclosure.js"), "utf8");
 
 function state(source = "hardware", scenario = "healthy") {
@@ -30,7 +31,7 @@ function state(source = "hardware", scenario = "healthy") {
     catch { browser = await chromium.launch({headless:true,channel:"msedge"}); }
     const page = await browser.newPage();
     const errors = [], requests = [];
-    let failState = false;
+    let failState = false, failHistory = false;
     page.on("pageerror", error => errors.push(error.message));
     await page.route("**/*", async route => {
       const req = route.request(), url = new URL(req.url());
@@ -38,6 +39,14 @@ function state(source = "hardware", scenario = "healthy") {
       if (url.hostname !== "enclosure.test") throw new Error("Unexpected external request");
       if (url.pathname === "/debug.html") return route.fulfill({contentType:"text/html",body:html});
       if (url.pathname === "/js/enclosure.js") return route.fulfill({contentType:"text/javascript",body:js});
+      if (url.pathname === "/js/history.js") return route.fulfill({contentType:"text/javascript",body:historyJs});
+      if (url.pathname === "/enclosure/history/temperatures") {
+        if(failHistory) return route.fulfill({status:503,body:'{}'});
+        const start=Date.parse(url.searchParams.get("date")+"T00:00:00-04:00")/1000;
+        return route.fulfill({contentType:"application/json",body:JSON.stringify({status:"available",start,end:start+86400,
+          series:[{sensor_id:"sensor_0",label:"Sensor 0",points:[0,60,240].map(offset=>({time:start+offset,
+            temperature_c:25,minimum_c:24,maximum_c:26,samples:6}))}]})});
+      }
       if (url.pathname === "/enclosure/state") {
         if(failState) return route.fulfill({status:503,contentType:"application/json",body:'{"detail":"offline"}'});
         return route.fulfill({contentType:"application/json",body:JSON.stringify(state(
@@ -51,6 +60,22 @@ function state(source = "hardware", scenario = "healthy") {
     await page.goto("https://enclosure.test/debug.html");
     await page.waitForFunction(() => document.querySelectorAll(".sensor-box").length === 16);
     assert.match(await page.locator("#summary").innerText(), /8 healthy/);
+    await page.waitForFunction(() => document.querySelectorAll("#temperature-chart path").length === 1);
+    assert.equal((await page.locator("#temperature-chart path").getAttribute("d")).match(/M/g).length,2);
+    assert.match(await page.locator("#history-table tbody").textContent(), /75.2°F/);
+    await page.locator("#unit-toggle").click();
+    assert.match(await page.locator("#history-table tbody").textContent(), /24.0°C/);
+    await page.locator("#history-date").fill("2026-09-01");
+    await page.locator("#history-date").dispatchEvent("change");
+    await page.waitForFunction(() => document.querySelector("#history-status").textContent.includes("saved historical day"));
+    assert.ok(requests.some(r => r.path.endsWith("/temperatures") && r.query.includes("2026-09-01")));
+    await page.locator("#history-legend input").uncheck();
+    assert.equal(await page.locator("#temperature-chart path").count(),0);
+    await page.locator("#history-legend input").check();
+    failHistory=true;
+    await page.locator("#history-today").click();
+    await page.waitForFunction(() => document.querySelector("#history-status").textContent.includes("temporarily unavailable"));
+    assert.match(await page.locator("#summary").innerText(), /8 healthy/);
     await page.locator("details summary").first().click();
     await page.waitForTimeout(1200);
     assert.equal(await page.locator("details").first().getAttribute("open"), "");
@@ -63,6 +88,8 @@ function state(source = "hardware", scenario = "healthy") {
     await page.locator("#source").selectOption("simulation");
     await page.waitForFunction(() => document.querySelector("#connection").textContent.includes("SIMULATION"));
     assert.equal(await page.locator("#simulation-banner").isVisible(),true);
+    assert.equal(await page.locator("#temperature-chart path").count(),0);
+    assert.match(await page.locator("#history-status").innerText(), /Simulation/);
     assert.equal(await page.locator("#relay-container button").count(),0);
     assert.equal(await page.locator("#load-camera").isDisabled(),true);
     await page.locator("#scenario").selectOption("sensor_error");
@@ -76,6 +103,6 @@ function state(source = "hardware", scenario = "healthy") {
     await page.waitForFunction(() => document.querySelector("#connection").textContent.includes("AWS state unavailable"));
     assert.equal(await page.locator("#toggle-1").isDisabled(),true);
     assert.deepEqual(errors,[]);
-    console.log("PASS: health cards, diagnostics persistence, unsaved schedules, failed commands, simulation isolation, mobile layout, gateway outage");
+    console.log("PASS: history graph, gaps, units, date selection, series selection, history failure isolation, health cards, diagnostics persistence, unsaved schedules, failed commands, simulation isolation, mobile layout, gateway outage");
   } finally { if(browser) await browser.close(); }
 })().catch(error => { console.error(error); process.exitCode=1; });

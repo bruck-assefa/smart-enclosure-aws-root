@@ -46,7 +46,8 @@ def allowed(name, profile):
             "/venv/" not in name and "/.env" not in name) or name in {
                 "etc/nginx/sites-available/bruck.gg",
                 "etc/systemd/system/smart-enclosure-api.service",
-                "var/www/bruck.gg/debug.html", "var/www/bruck.gg/js/enclosure.js"}
+                "var/www/bruck.gg/debug.html", "var/www/bruck.gg/js/enclosure.js",
+                "var/www/bruck.gg/js/history.js"}
 
 
 def blob(root, commit, name):

@@ -8,6 +8,8 @@ User=admin
 WorkingDirectory=/home/admin/smart-enclosure-api
 Environment=ENCLOSURE_PI_URL=http://100.110.157.122:8000
 Environment=ENCLOSURE_SIMULATION=1
+# Optional, root-owned file outside Git; contains ENCLOSURE_HISTORY_DSN.
+EnvironmentFile=-/etc/smart-enclosure/history.env
 ExecStart=/home/admin/smart-enclosure-api/venv/bin/uvicorn app:app --host 127.0.0.1 --port 8011 --workers 1
 Restart=on-failure
 RestartSec=5

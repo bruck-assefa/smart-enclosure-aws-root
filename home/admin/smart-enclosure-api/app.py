@@ -1,4 +1,4 @@
-"""Current-state gateway. No Node dependency, database writes or hardware imports."""
+"""Current-state gateway with independent, optional AWS historical storage."""
 import asyncio
 import copy
 import json
@@ -11,6 +11,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from history import History, day_bounds
 from sensor_contract import new_snapshot, aged, validate_snapshot
 from sensor_simulator import simulate, SCENARIOS
 
@@ -147,6 +148,9 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
             simulation_enabled if simulation_enabled is not None else os.getenv("ENCLOSURE_SIMULATION") == "1",
             live_enabled if live_enabled is not None else os.getenv("ENCLOSURE_LIVE", "1") == "1")
         app.state.gateway = gateway
+        history = History(gateway)
+        app.state.history = history
+        history_task = asyncio.create_task(history.run()) if history.dsn else None
         task = asyncio.create_task(gateway.run()) if gateway.live_enabled else None
         try:
             yield
@@ -155,6 +159,11 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
                 task.cancel()
                 with suppress(asyncio.CancelledError):
                     await task
+            if history_task:
+                history_task.cancel()
+                with suppress(asyncio.CancelledError):
+                    await history_task
+            await history.close()
             if owned:
                 await upstream.aclose()
 
@@ -168,7 +177,24 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
 
     @app.get("/state")
     async def state(source: str = "hardware", scenario: str = "healthy"):
-        return app.state.gateway.state(source, scenario)
+        result = app.state.gateway.state(source, scenario)
+        result["history"] = dict(app.state.history.status)
+        return result
+
+    @app.get("/history/temperatures")
+    async def temperatures(date: str, source: str = "hardware"):
+        if source not in ("hardware", "simulation"):
+            raise HTTPException(400, "Unknown source")
+        if source == "simulation":
+            return {"status": "simulation_not_stored", "series": []}
+        try:
+            day_bounds(date)
+        except (ValueError, OverflowError):
+            raise HTTPException(400, "Expected a valid date in YYYY-MM-DD format")
+        try:
+            return await app.state.history.read_day(date)
+        except Exception:
+            raise HTTPException(503, "History temporarily unavailable; live readings are independent")
 
     async def command(request, path, body=None):
         gateway = app.state.gateway
