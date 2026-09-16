@@ -32,3 +32,16 @@
 **/__pycache__/
 **/venv/
 **/.test-venv/
+
+# OS-package configuration: preserve the installed versions outside application Git
+/etc/nginx/fastcgi_params
+/etc/nginx/proxy_params
+/etc/nginx/scgi_params
+/etc/nginx/uwsgi_params
+# Existing historical archive and runtime secrets
+/home/admin/smart-enclosure-backend/sqlite-to-postgres/sensorData.db
+**/.env
+!/.gitattributes
+!/AGENTS.md
+!/tools/
+!/DEPLOYMENT_WORKFLOW.md
