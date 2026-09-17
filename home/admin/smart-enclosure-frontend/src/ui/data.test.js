@@ -1,9 +1,15 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assignments, liveZones, zoneHistory, shiftDay } from './data.js';
+import { assignments, liveZones, zoneHistory, shiftDay, serverNow } from './data.js';
 const sensor = (id, channel, status, time, value) => ({ sensor_id: id, hardware: { multiplexer_address: '0x70', channel }, enabled: true, status, last_success_at: time, last_good_reading: { temperature_c: value } });
 const sensors = [sensor('sensor_0', 0, 'healthy', 95, 30), sensor('sensor_5', 5, 'error', 90, 99)];
 const rows = [{ sensor_id: '0x70-ch0', zone: 'Warm' }, { sensor_id: '0x70-ch5', zone: 'Warm' }];
+test('browser clock skew does not invalidate fresh hardware measurements', () => {
+ const state = { connection: { status: 'connected' }, snapshot: { generated_at: 100, collector: { status: 'running' }, sensors } };
+ assert.equal(serverNow(state, 88, 90), 102);
+ assert.equal(liveZones(state, rows, serverNow(state, 88, 90))[0].value, 30);
+ assert.equal(liveZones(state, rows, serverNow(state, 88, 150))[0].value, null);
+});
 test('maps legacy physical IDs without inventing assignments', () => { assert.deepEqual(assignments(rows, sensors), { sensor_0: 'Warm', sensor_5: 'Warm' }); });
 test('zone average excludes failed/stale readings and exposes partial coverage', () => {
  const state = { connection: { status: 'connected' }, snapshot: { collector: { status: 'running' }, sensors } };

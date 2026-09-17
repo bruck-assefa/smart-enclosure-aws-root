@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { api, assignments, clock, dateKey, LABELS, shiftDay, temp, zoneHistory } from './data';
 
-export default function History({ unit, state, rows }) {
-  const today = dateKey();
+export default function History({ unit, state, rows, now }) {
+  const today = dateKey(new Date(now * 1000));
   const [range, setRange] = useState({ mode: 'live', start: today, end: today });
   const [draft, setDraft] = useState({ start: today, end: today });
   const [data, setData] = useState(null), [error, setError] = useState(''), [loading, setLoading] = useState(true);
@@ -16,7 +16,7 @@ export default function History({ unit, state, rows }) {
       if (document.hidden || inFlight) return;
       inFlight = true;
       controller = new AbortController();
-      const current = dateKey();
+      const current = today;
       const start = range.mode === 'live' ? shiftDay(current, -1) : range.mode === 'today' ? current : range.start;
       const end = ['live', 'today'].includes(range.mode) ? current : range.end;
       const deadline = setTimeout(() => controller.abort(), 8000);
@@ -28,10 +28,10 @@ export default function History({ unit, state, rows }) {
     const timer = setInterval(load, 60000);
     document.addEventListener('visibilitychange', load);
     return () => { active = false; controller?.abort(); clearInterval(timer); document.removeEventListener('visibilitychange', load); };
-  }, [range]);
+  }, [range, today]);
   const map = useMemo(() => assignments(rows, state?.snapshot?.sensors || []), [rows, state?.snapshot?.sensors]);
   const series = useMemo(() => zoneHistory(data?.series || [], map), [data, map]);
-  const now = Date.now() / 1000, start = range.mode === 'live' ? now - 86400 : data?.start || now - 86400, end = range.mode === 'live' ? now : data?.end || now;
+  const start = range.mode === 'live' ? now - 86400 : data?.start || now - 86400, end = range.mode === 'live' ? now : data?.end || now;
   const displayed = series.map(s => ({ ...s, points: s.points.filter(p => p.time >= start && p.time <= end) }));
   const values = displayed.flatMap(s => visible[s.zone] ? s.points.map(p => Number(temp(p.value, unit))) : []);
   const lo = values.length ? Math.floor(Math.min(...values) - 2) : unit === 'F' ? 60 : 15;

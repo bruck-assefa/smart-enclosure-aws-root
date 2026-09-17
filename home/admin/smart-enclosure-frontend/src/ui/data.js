@@ -1,4 +1,7 @@
 export const TIMEZONE = 'America/New_York';
+// Compare hardware timestamps with server time, not the browser's wall clock.
+export const serverNow = (state, received, clientNow) => Number.isFinite(state?.snapshot?.generated_at)
+  ? state.snapshot.generated_at + Math.max(0, clientNow - received) : clientNow;
 export const ZONES = ['Warm', 'Transition', 'Cool'];
 export const LABELS = { Warm: 'Hot zone', Transition: 'Transition zone', Cool: 'Cold zone' };
 export const dateKey = (date = new Date()) => new Intl.DateTimeFormat('en-CA', { timeZone: TIMEZONE, year: 'numeric', month: '2-digit', day: '2-digit' }).format(date);
