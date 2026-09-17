@@ -1,0 +1,44 @@
+/* White and light-blue variant of the original dashboard. */
+:root {
+  font-family: Inter, 'Segoe UI', sans-serif;
+  font-weight: 400;
+  color: #203b55;
+  background: #f0f7fd;
+  color-scheme: light;
+  --surface: #ffffff;
+  --muted: #536e86;
+  --line: #d7e5f1;
+  --hot: #b95832;
+  --mid: #8a7220;
+  --cold: #287aa1;
+}
+body { min-height: 100vh; background: #f0f7fd; }
+.app { min-height: 100vh; }
+.topbar { background: #ffffff; }
+.brand-mark { background: #397bad; }
+.topbar nav a[aria-current] { background: #e7f2fc; color: #245984; }
+.topbar nav a:hover { background: #eef6fc; }
+.zone, .panel, .settings-context { box-shadow: 0 3px 16px rgb(39 86 125 / 4%); }
+button:hover:not(:disabled) { border-color: #8db7d8; background: #edf6ff; }
+button:focus-visible, a:focus-visible, input:focus-visible, select:focus-visible { outline-color: #4a91c6; }
+.primary, .segmented button[aria-pressed=true] { background: #286a9c; color: white; border-color: #286a9c; }
+.primary:hover:not(:disabled) { background: #205781; color: white; }
+.badge { background: #e8f3fd; color: #315f84; }
+.camera-screen { background: #edf5fc; }
+.camera-symbol { color: #5687ad; }
+.day-track { background: #e3edf6; }
+.day-fill { background: #9fc9e9; }
+.now-marker { background: #245984; }
+.timeline-labels span:nth-child(2), .chart-detail strong { color: #203b55; }
+.cursor { stroke: #648bab; }
+.chart-scrubber input { accent-color: #397bad; }
+input, select { background: #f6faff; border-color: #bfd3e5; color: #203b55; }
+.chart-host { aspect-ratio: 2 / 1; }
+.chart-host svg, .chart-host .chart-empty { height: 100%; min-height: 0; }
+.relay-row > div { min-width: 0; }
+footer { flex-wrap: wrap; }
+@media (max-width: 550px) {
+  .zone { grid-template-columns: minmax(0, 1fr) auto; gap: 0 10px; }
+  .zone-name { min-width: 0; }
+  .camera-empty { width: 100%; min-width: 0; }
+}
