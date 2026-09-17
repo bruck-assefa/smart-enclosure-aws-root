@@ -141,6 +141,44 @@ class History:
         self.cache[value] = (time.monotonic(), result)
         return result
 
+    async def read_zones(self):
+        if not self.dsn:
+            return {'zones': [], 'status': 'disabled'}
+        pool = await self.database()
+        async with pool.acquire(timeout=1) as conn:
+            rows = await conn.fetch('SELECT sensor_id, zone FROM public.sensor_attributes ORDER BY sensor_id')
+        return {'status': 'available', 'zones': [dict(r) for r in rows]}
+
+    async def read_range(self, first, last, days):
+        if not self.dsn:
+            return {'status': 'disabled', 'series': []}
+        start, _ = day_bounds(first)
+        _, end = day_bounds(last)
+        bucket = 60 if days <= 2 else 300 if days <= 7 else 1800
+        key = (first, last)
+        cached = self.cache.get(key)
+        if cached and time.monotonic() - cached[0] < 30:
+            return cached[1]
+        if self.readers.locked():
+            raise RuntimeError('History busy')
+        async with self.readers:
+            pool = await self.database()
+            async with pool.acquire(timeout=1) as conn:
+                async with conn.transaction(readonly=True):
+                    rows = await conn.fetch(SELECT.replace("'1 minute'", '$3::interval'), start, end,
+                                            timedelta(seconds=bucket))
+        grouped = {}
+        for row in rows:
+            item = grouped.setdefault(row['sensor_id'], {'sensor_id': row['sensor_id'], 'points': []})
+            item['points'].append({'time': row['bucket'].timestamp(), 'temperature_c': row['temperature_c'],
+                                  'samples': row['samples']})
+        result = {'status': 'available', 'start': start.timestamp(), 'end': end.timestamp(),
+                  'timezone': str(ZONE), 'bucket_seconds': bucket, 'series': list(grouped.values())}
+        if len(self.cache) >= 8:
+            self.cache.pop(next(iter(self.cache)))
+        self.cache[key] = (time.monotonic(), result)
+        return result
+
     async def close(self):
         if self.pool:
             try:

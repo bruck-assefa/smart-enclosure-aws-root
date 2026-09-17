@@ -17,6 +17,8 @@ def hardware():
 def response(request):
     if request.url.path == "/v1/sensors":
         return httpx.Response(200, json=hardware())
+    if request.url.path == "/daylight":
+        return httpx.Response(200, json={"date":"2026-09-16", "sunrise":1, "sunset":2, "timezone":"America/New_York"})
     if request.url.path == "/relays":
         return httpx.Response(200, json={str(i): "on" for i in range(1, 5)})
     if request.url.path == "/schedules":
@@ -25,6 +27,17 @@ def response(request):
     return httpx.Response(200, json={"status":"success"})
 
 class CacheTests(unittest.IsolatedAsyncioTestCase):
+    async def test_invalid_daylight_is_isolated_from_live_readings(self):
+        def handler(req):
+            if req.url.path == '/daylight':
+                return httpx.Response(200, json={'date': '2026-09-16', 'sunrise': 'bad', 'sunset': 2, 'timezone': 'America/New_York'})
+            return response(req)
+        async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url='http://pi') as client:
+            gateway = app.Gateway(client)
+            await gateway.refresh()
+            self.assertEqual(gateway.state()['daylight']['error'], 'invalid_snapshot')
+            self.assertEqual(gateway.state()['connection']['status'], 'connected')
+
     async def test_outage_keeps_source_time_and_fails_closed(self):
         client = httpx.AsyncClient(transport=httpx.MockTransport(response), base_url="http://pi")
         gateway = app.Gateway(client)
@@ -68,7 +81,7 @@ class CacheTests(unittest.IsolatedAsyncioTestCase):
             await gateway.refresh()
             for _ in range(100):
                 gateway.state()
-            self.assertEqual(len(calls), 3)
+            self.assertEqual(len(calls), 4)
 
     async def test_stale_network_cache_disables_controls(self):
         async with httpx.AsyncClient(transport=httpx.MockTransport(response), base_url="http://pi") as client:

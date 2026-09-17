@@ -216,7 +216,7 @@
   $("load-camera").addEventListener("click", () => {
     if (source() !== "hardware" || !apiHealthy || !snapshot?.live_available) return;
     const frame = document.createElement("iframe");
-    frame.src = "https://api.bruck.gg/pi/cam/";
+    frame.src = "/camera/";
     frame.title = "Live enclosure camera"; frame.allowFullscreen = true;
     $("camera").replaceChildren(frame);
   });

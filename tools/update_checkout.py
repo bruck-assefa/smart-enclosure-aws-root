@@ -42,6 +42,10 @@ def allowed(name, profile):
         return name in {"main.py", "sensor_collector.py", "sensor_worker.py",
                         "sensor_contract.py", "sensor_simulator.py", "beardapi.service",
                         "docker-compose.yml", "mediamtx.yml"}
+    if name.startswith('home/admin/smart-enclosure-frontend/'):
+        return not any(part in name.split('/') for part in ('node_modules', '.env', 'dist'))
+    if name.startswith('var/www/react-app/dist/'):
+        return name.endswith(('.html', '.js', '.css', '.svg', '.png', '.ico'))
     return (name.startswith("home/admin/smart-enclosure-api/") and
             "/venv/" not in name and "/.env" not in name) or name in {
                 "etc/nginx/sites-available/bruck.gg",

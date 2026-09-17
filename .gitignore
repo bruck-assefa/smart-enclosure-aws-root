@@ -41,6 +41,8 @@
 # Existing historical archive and runtime secrets
 /home/admin/smart-enclosure-backend/sqlite-to-postgres/sensorData.db
 **/.env
+**/node_modules/
+/home/admin/smart-enclosure-frontend/dist/
 !/.gitattributes
 !/AGENTS.md
 !/tools/

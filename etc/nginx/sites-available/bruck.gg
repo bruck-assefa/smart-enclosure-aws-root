@@ -29,9 +29,21 @@ server {
     }
 
     # Serve React app (static files) at /smart
+    location = /smart { return 301 /smart/; }
     location /smart/ {
         alias /var/www/react-app/dist/;
         try_files $uri /smart/index.html;
+        add_header Cache-Control "no-cache";
+    }
+
+    # On-demand same-origin camera reader and WebRTC signalling.
+    location /camera/ {
+        proxy_pass http://100.110.157.122:8889/cam/;
+        proxy_redirect /cam/ /camera/;
+        proxy_set_header Host $host;
+        proxy_http_version 1.1;
+        proxy_buffering off;
+        proxy_read_timeout 30s;
     }
 
     # SSL (Certbot)
