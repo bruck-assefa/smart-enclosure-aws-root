@@ -36,7 +36,9 @@ export default function History({ unit, state, rows, now }) {
   const values = displayed.flatMap(s => visible[s.zone] ? s.points.map(p => Number(temp(p.value, unit))) : []);
   const lo = values.length ? Math.floor(Math.min(...values) - 2) : unit === 'F' ? 60 : 15;
   const hi = values.length ? Math.ceil(Math.max(...values) + 2) : unit === 'F' ? 100 : 40;
-  const w = Math.max(240, width), h = 280, left = 43, right = w - 12, bottom = h - 34;
+  // Keep a 2:1 landscape canvas at every viewport; labels retain their font size.
+  const w = Math.max(1, width), h = w / 2, left = 43, right = w - 12, bottom = h - 34;
+  const yTickCount = h < 180 ? 3 : 5;
   const x = t => left + (t - start) / (end - start) * (right - left);
   const y = v => bottom - (Number(temp(v, unit)) - lo) / (hi - lo) * (bottom - 24);
   const tickCount = width < 420 ? 3 : 4;
@@ -65,7 +67,7 @@ export default function History({ unit, state, rows, now }) {
     <div ref={host} className="chart-host">
       {loading ? <div className="chart-empty" role="status">Loading recorded temperatures…</div> : error ? <div className="chart-empty warning" role="status">{error}</div> : !values.length ? <div className="chart-empty">{!rows.length ? 'Zone assignments unavailable.' : 'No recorded readings in this range for the selected zones.'}</div> : <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Zone temperatures in degrees ${unit}. Tap or point for values.`} onPointerMove={e => { const r = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, ((e.clientX - r.left) * w / r.width - left) / (right - left)))); }}>
         <text x="4" y="13">°{unit}</text>
-        {[0, 1, 2, 3, 4].map(i => { const v = lo + (hi - lo) * i / 4, yy = bottom - i / 4 * (bottom - 24); return <g key={i}><line x1={left} x2={right} y1={yy} y2={yy} className="gridline" /><text x={left - 8} y={yy + 4} textAnchor="end">{v.toFixed(0)}</text></g>; })}
+        {Array.from({ length: yTickCount }, (_, i) => { const v = lo + (hi - lo) * i / (yTickCount - 1), yy = bottom - i / (yTickCount - 1) * (bottom - 24); return <g key={i}><line x1={left} x2={right} y1={yy} y2={yy} className="gridline" /><text x={left - 8} y={yy + 4} textAnchor="end">{v.toFixed(0)}</text></g>; })}
         {ticks.map((t, i) => <text key={i} x={x(t)} y={h - 10} textAnchor={i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'}>{tickLabel(t)}</text>)}
         {displayed.filter(s => visible[s.zone]).map(s => { let previous; const d = s.points.map(p => { const command = !previous || p.time - previous > (data.bucket_seconds * 1.5) ? 'M' : 'L'; previous = p.time; return `${command}${x(p.time).toFixed(1)},${y(p.value).toFixed(1)}`; }).join(' '); return <g key={s.zone}><path d={d} className={`series ${s.zone}`} />{s.points.length === 1 && <circle cx={x(s.points[0].time)} cy={y(s.points[0].value)} r="3" className={`point ${s.zone}`} />}</g>; })}
         {selected != null && <line x1={x(selected)} x2={x(selected)} y1="24" y2={bottom} className="cursor" />}
