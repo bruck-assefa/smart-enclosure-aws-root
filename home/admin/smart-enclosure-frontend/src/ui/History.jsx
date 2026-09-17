@@ -39,7 +39,8 @@ export default function History({ unit, state, rows, now }) {
   const w = Math.max(240, width), h = 280, left = 43, right = w - 12, bottom = h - 34;
   const x = t => left + (t - start) / (end - start) * (right - left);
   const y = v => bottom - (Number(temp(v, unit)) - lo) / (hi - lo) * (bottom - 24);
-  const ticks = Array.from({ length: 4 }, (_, i) => start + (end - start) * i / 3);
+  const tickCount = width < 420 ? 3 : 4;
+  const ticks = Array.from({ length: tickCount }, (_, i) => start + (end - start) * i / (tickCount - 1));
   const tickLabel = t => end - start > 90000 ? new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric' }).format(new Date(t * 1000)) : clock(t);
   const selected = cursor == null ? null : start + cursor * (end - start);
   const detail = selected == null ? [] : displayed.filter(s => visible[s.zone]).map(s => {
@@ -65,7 +66,7 @@ export default function History({ unit, state, rows, now }) {
       {loading ? <div className="chart-empty" role="status">Loading recorded temperatures…</div> : error ? <div className="chart-empty warning" role="status">{error}</div> : !values.length ? <div className="chart-empty">{!rows.length ? 'Zone assignments unavailable.' : 'No recorded readings in this range for the selected zones.'}</div> : <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Zone temperatures in degrees ${unit}. Tap or point for values.`} onPointerMove={e => { const r = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, ((e.clientX - r.left) * w / r.width - left) / (right - left)))); }}>
         <text x="4" y="13">°{unit}</text>
         {[0, 1, 2, 3, 4].map(i => { const v = lo + (hi - lo) * i / 4, yy = bottom - i / 4 * (bottom - 24); return <g key={i}><line x1={left} x2={right} y1={yy} y2={yy} className="gridline" /><text x={left - 8} y={yy + 4} textAnchor="end">{v.toFixed(0)}</text></g>; })}
-        {ticks.map((t, i) => <text key={i} x={x(t)} y={h - 10} textAnchor={i === 0 ? 'start' : i === 3 ? 'end' : 'middle'}>{tickLabel(t)}</text>)}
+        {ticks.map((t, i) => <text key={i} x={x(t)} y={h - 10} textAnchor={i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'}>{tickLabel(t)}</text>)}
         {displayed.filter(s => visible[s.zone]).map(s => { let previous; const d = s.points.map(p => { const command = !previous || p.time - previous > (data.bucket_seconds * 1.5) ? 'M' : 'L'; previous = p.time; return `${command}${x(p.time).toFixed(1)},${y(p.value).toFixed(1)}`; }).join(' '); return <g key={s.zone}><path d={d} className={`series ${s.zone}`} />{s.points.length === 1 && <circle cx={x(s.points[0].time)} cy={y(s.points[0].value)} r="3" className={`point ${s.zone}`} />}</g>; })}
         {selected != null && <line x1={x(selected)} x2={x(selected)} y1="24" y2={bottom} className="cursor" />}
       </svg>}
