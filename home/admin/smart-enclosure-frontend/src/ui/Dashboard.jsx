@@ -1,5 +1,6 @@
 import { useState } from 'react';
 import History from './History';
+import { FeedingToday } from './Feeding';
 import { clock, dateKey, LABELS, liveZones, temp } from './data';
 
 function Camera({ available }) {
@@ -27,11 +28,12 @@ function Daylight({ state, now, fresh }) {
   </section>;
 }
 
-export default function Dashboard({ state, rows, unit, now, fresh, zonesError }) {
+export default function Dashboard({ state, rows, unit, now, fresh, zonesError, feeding }) {
   const zones = liveZones(fresh ? state : null, rows, now);
   return <><div className="section-heading"><p className="eyebrow">YOUR ENCLOSURE, AT A GLANCE</p><h1>A little closer to nature.</h1><p className="muted">Live temperatures and the daily rhythm of your enclosure.</p></div>
     {zonesError && <p className="notice warning" role="status">{zonesError}</p>}
     <section className="zones" aria-label="Current zone temperatures">{zones.map(z => <article className="zone" key={z.zone}><div className="zone-name"><span className={`dot ${z.zone}`} />{LABELS[z.zone]}</div><div className="reading">{temp(z.value, unit)}<small>°{unit}</small></div><p className={`zone-foot ${z.count < z.total ? 'warning' : ''}`}>{z.count ? `${z.count}/${z.total} sensors · updated ${z.age}s ago` : 'No fresh readings'}{z.count > 0 && z.count < z.total ? ' · partial' : ''}</p></article>)}</section>
+    <FeedingToday feeding={feeding} />
     <div className="dashboard-grid"><Camera available={fresh && state?.live_available && state?.connection?.status === 'connected'} /><Daylight state={state} now={now} fresh={fresh} /><History unit={unit} state={state} rows={rows} now={now} /></div>
   </>;
 }

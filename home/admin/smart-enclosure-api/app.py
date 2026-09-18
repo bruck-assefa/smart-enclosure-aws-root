@@ -13,6 +13,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
 from history import History, day_bounds
+from feeding import Feeding, Conflict, validate as validate_feeding
 from sensor_contract import new_snapshot, aged, validate_snapshot
 from sensor_simulator import simulate, SCENARIOS
 
@@ -160,6 +161,7 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
         app.state.gateway = gateway
         history = History(gateway)
         app.state.history = history
+        app.state.feeding = Feeding(history)
         history_task = asyncio.create_task(history.run()) if history.dsn else None
         task = asyncio.create_task(gateway.run()) if gateway.live_enabled else None
         try:
@@ -228,6 +230,37 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
             return await app.state.history.read_range(start, end, days)
         except Exception:
             raise HTTPException(503, 'History temporarily unavailable; live readings are independent')
+
+    @app.get('/feeding')
+    async def feeding():
+        try:
+            return await asyncio.wait_for(app.state.feeding.read(), 3)
+        except Exception:
+            raise HTTPException(503, 'Feeding schedule temporarily unavailable')
+
+    @app.put('/feeding')
+    async def save_feeding(request: Request):
+        # Same explicit write intent as other settings, but no dependency on Pi health.
+        if request.query_params.get('source') != 'hardware' or request.headers.get('X-Enclosure-Control') != '1':
+            raise HTTPException(403, 'Explicit settings update required')
+        if not app.state.gateway.live_enabled:
+            raise HTTPException(403, 'Settings updates unavailable in simulation-only mode')
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw.extend(chunk)
+            if len(raw) > 2048:
+                raise HTTPException(413, 'Feeding settings request too large')
+        try:
+            body = json.loads(raw)
+            validate_feeding(body)
+        except (ValueError, TypeError):
+            raise HTTPException(400, 'Choose weekdays or an interval of 1–365 days with a valid start date')
+        try:
+            return await asyncio.wait_for(app.state.feeding.save(body), 3)
+        except Conflict as error:
+            raise HTTPException(409, str(error))
+        except Exception:
+            raise HTTPException(503, 'Save could not be confirmed. Reload the saved plan before retrying.')
 
     async def command(request, path, body=None):
         gateway = app.state.gateway

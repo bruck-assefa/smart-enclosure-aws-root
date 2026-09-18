@@ -1,0 +1,41 @@
+.feeding-today { display: flex; align-items: center; gap: 24px; flex-wrap: wrap; margin-bottom: 22px; }
+.feeding-today .eyebrow { color: var(--muted); font-size: 11px; letter-spacing: 1.5px; }
+.feeding-today-value { display: flex; flex-wrap: wrap; gap: 8px; font-size: 19px; font-weight: 500; margin: 9px 0 7px; }
+.food-tag { display: inline-flex; align-items: center; gap: 7px; padding: 5px 10px; border-radius: 9px; font-size: 14px; font-weight: 500; }
+.food-tag.salad { background: #eaf5ee; color: #356548; }
+.food-tag.bugs { background: #fff1df; color: #80531e; }
+.feeding-next { display: grid; gap: 6px; margin-left: auto; font-size: 12px; color: var(--muted); }
+.feeding-next strong { font-weight: 500; color: #203b55; margin-left: 8px; }
+.feeding-settings-link { font-size: 13px; color: #286a9c; padding: 10px 0; }
+.settings-section-heading { margin: 0 0 18px; }
+.settings-section-heading p { font-size: 13px; margin-top: 5px; }
+.feeding-settings { margin-bottom: 34px; }
+.feeding-form { margin: 0; min-width: 0; }
+.feeding-form legend { font-size: 17px; font-weight: 600; padding: 0 7px; }
+.feeding-enabled { display: flex; align-items: center; gap: 9px; min-height: 44px; cursor: pointer; font-size: 14px; }
+.feeding-enabled input { width: 18px; height: 18px; min-height: 0; accent-color: #286a9c; }
+.feeding-fields { display: grid; gap: 17px; margin-top: 14px; }
+.feeding-fields label { display: grid; gap: 6px; font-size: 12px; color: var(--muted); }
+.feeding-fields input, .feeding-fields select { width: 100%; font-size: 16px; }
+.field-label { color: var(--muted); font-size: 12px; margin-bottom: 7px; }
+.weekday-picker { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 9px; }
+.weekday-picker button { min-width: 44px; min-height: 44px; padding: 8px; font-size: 12px; }
+.weekday-picker button[aria-pressed=true] { background: #286a9c; border-color: #286a9c; color: white; }
+.feeding-interval { display: grid; grid-template-columns: minmax(80px, 1fr) minmax(150px, 1.6fr); gap: 12px; }
+.feeding-save { display: flex; gap: 10px; align-items: center; flex-wrap: wrap; margin-top: 18px; }
+.feeding-save p { color: var(--muted); font-size: 12px; flex-basis: 100%; }
+.feeding-week { margin-top: 24px; }
+.feeding-week h3 { font-size: 14px; margin-bottom: 12px; }
+.feeding-week-grid { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: 8px; }
+.feeding-day { background: white; border: 1px solid var(--line); border-radius: 12px; padding: 12px 10px; display: flex; flex-direction: column; gap: 5px; }
+.feeding-day strong { font-size: 13px; font-weight: 500; }
+.feeding-day > div { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 6px; }
+.feeding-day .food-tag { padding: 4px 6px; font-size: 12px; gap: 4px; }
+@media(max-width:850px) { .feeding-week-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); } }
+@media(max-width:550px) {
+  .feeding-today { gap: 14px; }
+  .feeding-next { margin-left: 0; width: 100%; }
+  .feeding-settings-link { padding: 5px 0; }
+  .feeding-week-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .feeding-interval { grid-template-columns: 1fr; }
+}

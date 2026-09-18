@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, clock, dateKey } from './data';
+import { FeedingSettings } from './Feeding';
 
 function RelayForm({ relay, enabled, refresh }) {
   const [draft, setDraft] = useState(relay), [dirty, setDirty] = useState(false), [busy, setBusy] = useState(false), [message, setMessage] = useState('');
@@ -35,10 +36,12 @@ function RelayForm({ relay, enabled, refresh }) {
   </form>;
 }
 
-export default function Settings({ state, enabled, refresh }) {
+export default function Settings({ state, enabled, refresh, feeding }) {
   const relays = state?.schedules?.data, sun = state?.daylight?.data;
   const sunFresh = enabled && !state?.daylight?.error && sun?.date === dateKey(new Date(state.snapshot.generated_at * 1000));
-  return <section><div className="section-heading"><h1>Relay settings</h1><p className="muted">Give each device a name and choose its daily rhythm.</p></div>
+  return <section><div className="section-heading"><h1>Enclosure settings</h1><p className="muted">Set the daily routine for feeding and lighting.</p></div>
+    <FeedingSettings feeding={feeding} />
+    <div className="settings-section-heading"><h2>Relay settings</h2><p className="muted">Give each device a name and choose its daily rhythm.</p></div>
     <div className="settings-context"><span>{sunFresh ? <>Sunrise <strong>{clock(sun.sunrise)}</strong> · Sunset <strong>{clock(sun.sunset)}</strong></> : 'Waiting for today’s solar times'}</span><span>{sun?.location || 'McNair, Virginia'} · America/New_York</span></div>
     {!relays?.length ? <div className="panel empty">Waiting for relay settings from the enclosure…</div> : <div className="settings-grid">{relays.map(relay => <RelayForm key={relay.relay_id} relay={relay} enabled={enabled} refresh={refresh} />)}</div>}
   </section>;

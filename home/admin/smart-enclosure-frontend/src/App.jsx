@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import Dashboard from './ui/Dashboard';
 import Settings from './ui/Settings';
-import { api, serverNow } from './ui/data';
+import { api, serverNow, dateKey } from './ui/data';
+import useFeeding from './ui/useFeeding';
 import './ui/styles.css';
 import './ui/light.css';
 
@@ -20,10 +21,11 @@ export default function App() {
   useEffect(() => { let active = true; async function load() { try { const d = await api('/zones'); if (active) { setRows(d.zones); setZonesError(d.zones.length ? '' : 'No zone assignments are available.'); } } catch { if (active) setZonesError('Zone assignments could not be refreshed. Retaining any previously loaded assignments.'); } } load(); const timer = setInterval(load, 60000); return () => { active = false; clearInterval(timer); }; }, []);
   useEffect(() => { const change = () => setPage(location.hash === '#settings' ? 'settings' : 'overview'); window.addEventListener('hashchange', change); return () => window.removeEventListener('hashchange', change); }, []);
   const fresh = !error && now - received <= 15;
+  const feeding = useFeeding(dateKey(new Date(serverNow(state, received, now) * 1000)));
   function chooseUnit(u) { setUnit(u); try { localStorage.setItem('enclosure-unit', u); } catch { /* Preference storage is optional. */ } }
   return <div className="app"><header className="topbar"><a href="#overview" className="brand"><span className="brand-mark" aria-hidden="true">↟</span>Smart Enclosure</a><nav aria-label="Main navigation"><a href="#overview" aria-current={page === 'overview' ? 'page' : undefined}>Overview</a><a href="#settings" aria-current={page === 'settings' ? 'page' : undefined}>Settings</a><a href="/debug.html">Debug ↗</a></nav><div className="segmented units" aria-label="Temperature unit">{['F', 'C'].map(u => <button key={u} aria-pressed={unit === u} onClick={() => chooseUnit(u)}>°{u}</button>)}</div></header>
     <main><div className="connection"><span className={`status-dot ${fresh && state?.connection?.status === 'connected' ? 'connected' : ''}`} />{error || (!state ? 'Connecting to enclosure…' : fresh && state.connection.status === 'connected' ? 'Connected to enclosure' : 'Enclosure data unavailable or stale')}<span className="connection-time">America/New_York</span></div>
-      {page === 'settings' ? <Settings state={state} enabled={fresh && state?.controls_enabled} refresh={refresh} /> : <Dashboard state={state} rows={rows} unit={unit} now={serverNow(state, received, now)} fresh={fresh} zonesError={zonesError} />}
+      {page === 'settings' ? <Settings state={state} enabled={fresh && state?.controls_enabled} refresh={refresh} feeding={feeding} /> : <Dashboard state={state} rows={rows} unit={unit} now={serverNow(state, received, now)} fresh={fresh} zonesError={zonesError} feeding={feeding} />}
       <footer><span>Smart Enclosure</span><span>{state?.history?.status === 'recording' ? 'History recording' : `History: ${(state?.history?.status || 'connecting').replaceAll('_', ' ')}`}</span></footer>
     </main></div>;
 }
