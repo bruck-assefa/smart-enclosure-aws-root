@@ -6,9 +6,9 @@
   "scripts": {
     "dev": "vite",
     "build": "vite build",
-    "lint": "eslint src/App.jsx src/main.jsx src/ui/*.jsx src/ui/data.js src/ui/useFeeding.js",
+    "lint": "eslint src/App.jsx src/main.jsx src/ui/*.jsx src/ui/data.js src/ui/useFeeding.js src/ui/useEvents.js src/ui/eventData.js",
     "preview": "vite preview",
-    "test": "node --test src/ui/data.test.js"
+    "test": "node --test src/ui/*.test.js"
   },
   "dependencies": {
     "react": "^19.1.0",

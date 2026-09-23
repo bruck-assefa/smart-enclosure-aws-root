@@ -12,6 +12,7 @@ import httpx
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import JSONResponse
 
+from events import Events, router as events_router
 from history import History, day_bounds
 from feeding import Feeding, Conflict, validate as validate_feeding
 from sensor_contract import new_snapshot, aged, validate_snapshot
@@ -162,6 +163,7 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
         history = History(gateway)
         app.state.history = history
         app.state.feeding = Feeding(history)
+        app.state.events = Events(history)
         history_task = asyncio.create_task(history.run()) if history.dsn else None
         task = asyncio.create_task(gateway.run()) if gateway.live_enabled else None
         try:
@@ -180,6 +182,7 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
                 await upstream.aclose()
 
     app = FastAPI(title="Smart Enclosure state gateway", lifespan=lifespan)
+    app.include_router(events_router)
 
     @app.middleware("http")
     async def no_cache(request, call_next):

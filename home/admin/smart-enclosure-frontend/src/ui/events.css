@@ -1,0 +1,27 @@
+.events-panel { border-top: 1px solid var(--line); margin-top: 18px; padding-top: 18px; }
+.event-heading, .event-actions { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.event-heading { justify-content: space-between; }
+.event-heading h3, .event-heading p { margin: 0 0 6px; }
+.event-form { margin-top: 16px; padding: 16px; border: 1px solid var(--line); border-radius: 12px; }
+.event-form fieldset { border: 0; padding: 0; margin: 0; min-width: 0; display: grid; gap: 14px; }
+.event-fields { display: grid; grid-template-columns: 1fr 2fr; gap: 14px; }
+.event-form label { display: grid; gap: 6px; font-size: 13px; }
+.event-form input, .event-form select, .event-form textarea { width: 100%; min-width: 0; font: inherit; font-size: 16px; padding: 10px; border: 1px solid var(--line); border-radius: 8px; background: white; color: inherit; }
+.event-form textarea { resize: vertical; }
+.event-form summary { cursor: pointer; font-size: 13px; margin-bottom: 8px; }
+.event-list { list-style: none; padding: 0; max-height: 360px; overflow: auto; }
+.event-list li { padding: 12px; border: 1px solid var(--line); border-radius: 10px; margin: 8px 0; }
+.event-list .event-selected { border-color: #286a9c; background: #f0f7fc; }
+.event-list p { white-space: pre-wrap; overflow-wrap: anywhere; margin: 8px 0; }
+.event-time { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; text-align: left; }
+.event-time span:last-child { color: var(--muted); font-size: 12px; }
+.event-dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #766b8f; }
+.event-dot.feeding { background: #47825c; }.event-dot.cleaning { background: #347fa1; }.event-dot.bulb_change { background: #b07128; }
+.event-refresh { margin-top: 12px; }
+.event-marker { cursor: pointer; color: #766b8f; }.event-marker.feeding { color: #47825c; }.event-marker.cleaning { color: #347fa1; }.event-marker.bulb_change { color: #b07128; }
+.event-marker line { stroke: currentColor; stroke-dasharray: 3 4; opacity: .65; }.event-marker circle { fill: currentColor; stroke: white; stroke-width: 2; }
+.event-marker:focus circle, .event-marker.active circle { stroke: #172d3a; stroke-width: 3; }
+.event-delete { padding: 12px; border: 1px solid #ba6048; border-radius: 8px; }.event-delete button { margin-right: 8px; }
+@media(max-width:600px) { .event-fields { grid-template-columns: 1fr; }.event-heading { align-items: flex-start; } }
+
+.history .chart-detail { overflow-wrap: anywhere; }

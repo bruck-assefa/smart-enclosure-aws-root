@@ -1,4 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Events from './Events';
+import useEvents from './useEvents';
+import { EVENT_LABELS, eventTimeLabel } from './eventData';
 import { api, assignments, clock, dateKey, LABELS, shiftDay, temp, zoneHistory } from './data';
 
 export default function History({ unit, state, rows, now }) {
@@ -8,6 +11,10 @@ export default function History({ unit, state, rows, now }) {
   const [data, setData] = useState(null), [error, setError] = useState(''), [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(null), [width, setWidth] = useState(600);
   const [visible, setVisible] = useState({ Warm: true, Transition: true, Cool: true });
+  const [activeId, setActiveId] = useState(null);
+  const eventStart = range.mode === 'live' ? shiftDay(today, -1) : range.mode === 'today' ? today : range.start;
+  const eventEnd = ['live', 'today'].includes(range.mode) ? today : range.end;
+  const eventStore = useEvents(eventStart, eventEnd);
   const host = useRef(null);
   useEffect(() => { const obs = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width)); obs.observe(host.current); return () => obs.disconnect(); }, []);
   useEffect(() => {
@@ -31,7 +38,9 @@ export default function History({ unit, state, rows, now }) {
   }, [range, today]);
   const map = useMemo(() => assignments(rows, state?.snapshot?.sensors || []), [rows, state?.snapshot?.sensors]);
   const series = useMemo(() => zoneHistory(data?.series || [], map), [data, map]);
-  const start = range.mode === 'live' ? now - 86400 : data?.start || now - 86400, end = range.mode === 'live' ? now : data?.end || now;
+  const start = range.mode === 'live' ? now - 86400 : data?.start || eventStore.start || now - 86400, end = range.mode === 'live' ? now : data?.end || eventStore.end || now;
+  const visibleEvents = eventStore.events.filter(event => event.occurred_at >= start && event.occurred_at < end);
+  function selectEvent(event) { setActiveId(event.id); setCursor((event.occurred_at - start) / (end - start)); }
   const displayed = series.map(s => ({ ...s, points: s.points.filter(p => p.time >= start && p.time <= end) }));
   const values = displayed.flatMap(s => visible[s.zone] ? s.points.map(p => Number(temp(p.value, unit))) : []);
   const lo = values.length ? Math.floor(Math.min(...values) - 2) : unit === 'F' ? 60 : 15;
@@ -49,6 +58,10 @@ export default function History({ unit, state, rows, now }) {
     const p = s.points.reduce((best, p) => !best || Math.abs(p.time - selected) < Math.abs(best.time - selected) ? p : best, null);
     return { zone: s.zone, point: p && Math.abs(p.time - selected) <= (data?.bucket_seconds || 60) ? p : null };
   });
+  function inspectTime(e) {
+    const r = e.currentTarget.getBoundingClientRect();
+    setCursor(Math.max(0, Math.min(1, ((e.clientX - r.left) * w / r.width - left) / (right - left))));
+  }
   function preset(mode) {
     const start = mode === 'yesterday' ? shiftDay(today, -1) : mode === 'week' ? shiftDay(today, -6) : today;
     const end = mode === 'yesterday' ? start : today;
@@ -65,16 +78,24 @@ export default function History({ unit, state, rows, now }) {
     </form>}
     <div className="legend">{series.map(s => <button key={s.zone} aria-pressed={visible[s.zone]} onClick={() => setVisible({ ...visible, [s.zone]: !visible[s.zone] })}><span className={`dot ${s.zone}`} />{LABELS[s.zone]}</button>)}</div>
     <div ref={host} className="chart-host">
-      {loading ? <div className="chart-empty" role="status">Loading recorded temperatures…</div> : error ? <div className="chart-empty warning" role="status">{error}</div> : !values.length ? <div className="chart-empty">{!rows.length ? 'Zone assignments unavailable.' : 'No recorded readings in this range for the selected zones.'}</div> : <svg viewBox={`0 0 ${w} ${h}`} role="img" aria-label={`Zone temperatures in degrees ${unit}. Tap or point for values.`} onPointerMove={e => { const r = e.currentTarget.getBoundingClientRect(); setCursor(Math.max(0, Math.min(1, ((e.clientX - r.left) * w / r.width - left) / (right - left)))); }}>
+      {loading ? <div className="chart-empty" role="status">Loading recorded temperatures…</div> : error ? <div className="chart-empty warning" role="status">{error}</div> : !values.length && !visibleEvents.length ? <div className="chart-empty">{!rows.length ? 'Zone assignments unavailable.' : 'No recorded readings in this range for the selected zones.'}</div> : <svg viewBox={`0 0 ${w} ${h}`} role="group" aria-label={`Zone temperatures in degrees ${unit}. Tap or point for values.`} onPointerMove={inspectTime} onPointerDown={inspectTime}>
         <text x="4" y="13">°{unit}</text>
         {Array.from({ length: yTickCount }, (_, i) => { const v = lo + (hi - lo) * i / (yTickCount - 1), yy = bottom - i / (yTickCount - 1) * (bottom - 24); return <g key={i}><line x1={left} x2={right} y1={yy} y2={yy} className="gridline" /><text x={left - 8} y={yy + 4} textAnchor="end">{v.toFixed(0)}</text></g>; })}
         {ticks.map((t, i) => <text key={i} x={x(t)} y={h - 10} textAnchor={i === 0 ? 'start' : i === ticks.length - 1 ? 'end' : 'middle'}>{tickLabel(t)}</text>)}
         {displayed.filter(s => visible[s.zone]).map(s => { let previous; const d = s.points.map(p => { const command = !previous || p.time - previous > (data.bucket_seconds * 1.5) ? 'M' : 'L'; previous = p.time; return `${command}${x(p.time).toFixed(1)},${y(p.value).toFixed(1)}`; }).join(' '); return <g key={s.zone}><path d={d} className={`series ${s.zone}`} />{s.points.length === 1 && <circle cx={x(s.points[0].time)} cy={y(s.points[0].value)} r="3" className={`point ${s.zone}`} />}</g>; })}
-        {selected != null && <line x1={x(selected)} x2={x(selected)} y1="24" y2={bottom} className="cursor" />}
+        {visibleEvents.map((event, index) => <g key={event.id} className={`event-marker ${event.category} ${activeId === event.id ? 'active' : ''}`} role="button" tabIndex="0" aria-label={`${EVENT_LABELS[event.category]}, ${eventTimeLabel(event.occurred_at)}: ${event.note}`} onPointerMove={e => e.stopPropagation()} onPointerDown={e => e.stopPropagation()} onClick={() => selectEvent(event)} onKeyDown={e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); selectEvent(event); } }}>
+          <title>{`${EVENT_LABELS[event.category]} · ${eventTimeLabel(event.occurred_at)}\n${event.note}`}</title>
+          <line x1={x(event.occurred_at)} x2={x(event.occurred_at)} y1="24" y2={bottom} />
+          <circle cx={x(event.occurred_at)} cy={28 + index % 3 * 14} r="6" />
+          <circle cx={x(event.occurred_at)} cy={28 + index % 3 * 14} r="12" style={{ fill: 'transparent', stroke: 'none' }} />
+        </g>)}
+        {selected != null && <line style={{ pointerEvents: 'none' }} x1={x(selected)} x2={x(selected)} y1="24" y2={bottom} className="cursor" />}
       </svg>}
     </div>
     {!!values.length && !loading && <label className="chart-scrubber">Inspect time<input aria-label="Inspect historical temperatures by time" type="range" min="0" max="1000" value={Math.round((cursor || 0) * 1000)} onChange={e => setCursor(Number(e.target.value) / 1000)} /></label>}
     <div className="chart-detail" aria-live="polite">{selected == null ? 'Tap the chart or use the time slider to inspect readings.' : <><strong>{new Intl.DateTimeFormat('en-US', { timeZone: 'America/New_York', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' }).format(new Date(selected * 1000))}</strong>{detail.map(d => <span key={d.zone}>{LABELS[d.zone]}: {d.point ? `${temp(d.point.value, unit)}°${unit} · ${d.point.count} sensors` : 'No reading'}</span>)}</>}</div>
+    {activeId && visibleEvents.some(event => event.id === activeId) && <div className="chart-detail">{visibleEvents.filter(event => event.id === activeId).map(event => <span key={event.id}><strong>{EVENT_LABELS[event.category]} · {eventTimeLabel(event.occurred_at)}</strong> {event.note}</span>)}</div>}
+    <Events store={eventStore} events={visibleEvents} selected={selected} now={now} activeId={activeId} selectEvent={selectEvent} />
     <div className="panel-foot"><span>{data?.bucket_seconds ? `${data.bucket_seconds / 60}-minute averages · gaps show missing data` : 'Recorded sensor history'}</span><span>America/New_York</span></div>
   </section>;
 }
