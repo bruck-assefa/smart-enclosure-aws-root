@@ -48,3 +48,27 @@ export async function api(path, options = {}) {
   if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `Request failed (${response.status})`);
   return data;
 }
+
+// Interpret wall-clock inputs in the enclosure timezone, independently of the browser.
+// Repeated fall-back times span both occurrences (earlier start, later end).
+export function customHistoryBounds(draft) {
+  const parse = (day, time, last) => {
+    const local = `${day}T${time || '00:00'}`;
+    const nominal = Date.parse(`${local}:00Z`);
+    const formatter = new Intl.DateTimeFormat('sv-SE', { timeZone: TIMEZONE,
+      year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23' });
+    const matches = [];
+    for (let offset = -14; offset <= 14; offset++) {
+      const stamp = nominal + offset * 3600000;
+      if (Number.isFinite(stamp) && formatter.format(new Date(stamp)).replace(' ', 'T') === local) matches.push(stamp / 1000);
+    }
+    if (!matches.length) throw new Error('Choose a valid enclosure date and time. That time may not exist during the daylight-saving change.');
+    return last ? matches.at(-1) : matches[0];
+  };
+  const days = (Date.parse(draft.end) - Date.parse(draft.start)) / 86400000 + 1;
+  if (!Number.isFinite(days) || days < 1 || days > 31) throw new Error('Choose dates spanning no more than 31 calendar days.');
+  const start = parse(draft.start, draft.startTime, false);
+  const end = parse(draft.endTime ? draft.end : shiftDay(draft.end, 1), draft.endTime, true);
+  if (end <= start) throw new Error('End date and time must be after the start.');
+  return { start, end };
+}

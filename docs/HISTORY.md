@@ -176,3 +176,15 @@ built dashboard assets, follow DEPLOYMENT_WORKFLOW.md with the guarded updater,
 and restart smart-enclosure-api to activate the expanded queries. Verify all
 three metrics against AWS history and confirm recording continues. Local tests
 do not verify deployed database contents or runtime behavior.
+
+## Custom times
+
+The main dashboard's Custom range accepts optional start and end times in
+America/New_York, independently of the browser timezone. Blank times include
+full calendar days. End times are exclusive. Readings and events use the same
+interval; the existing bounded day API and its aggregation resolution remain
+unchanged. Invalid or reversed intervals retain the previously applied chart.
+Spring-forward nonexistent times are rejected; repeated fall-back times use the
+earlier start and later end to include both occurrences. Presets remain full-day
+views, and day navigation preserves applied times. This is a frontend-only change;
+no Pi, database migration, or API restart is required for its deployment.

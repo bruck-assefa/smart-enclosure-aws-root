@@ -2,7 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import Events from './Events';
 import useEvents from './useEvents';
 import { EVENT_LABELS, eventTimeLabel } from './eventData';
-import { api, assignments, clock, dateKey, LABELS, shiftDay, temp, zoneHistory } from './data';
+import { api, assignments, customHistoryBounds, clock, dateKey, LABELS, shiftDay, temp, zoneHistory } from './data';
 
 export default function History({ unit, state, rows, now }) {
   const [metric, setMetric] = useState('temperature_c');
@@ -11,7 +11,8 @@ export default function History({ unit, state, rows, now }) {
   const format = value => metric === 'temperature_c' ? temp(value, unit) : value.toFixed(1);
   const today = dateKey(new Date(now * 1000));
   const [range, setRange] = useState({ mode: 'live', start: today, end: today });
-  const [draft, setDraft] = useState({ start: today, end: today });
+  const [draft, setDraft] = useState({ start: today, end: today, startTime: '', endTime: '' });
+  const [rangeError, setRangeError] = useState('');
   const [data, setData] = useState(null), [error, setError] = useState(''), [loading, setLoading] = useState(true);
   const [cursor, setCursor] = useState(null), [width, setWidth] = useState(600);
   const [visible, setVisible] = useState({ Warm: true, Transition: true, Cool: true });
@@ -42,10 +43,10 @@ export default function History({ unit, state, rows, now }) {
   }, [range, today]);
   const map = useMemo(() => assignments(rows, state?.snapshot?.sensors || []), [rows, state?.snapshot?.sensors]);
   const series = useMemo(() => zoneHistory(data?.series || [], map, metric), [data, map, metric]);
-  const start = range.mode === 'live' ? now - 86400 : data?.start || eventStore.start || now - 86400, end = range.mode === 'live' ? now : data?.end || eventStore.end || now;
+  const start = range.mode === 'live' ? now - 86400 : range.bounds?.start ?? data?.start ?? eventStore.start ?? now - 86400, end = range.mode === 'live' ? now : range.bounds?.end ?? data?.end ?? eventStore.end ?? now;
   const visibleEvents = eventStore.events.filter(event => event.occurred_at >= start && event.occurred_at < end);
   function selectEvent(event) { setActiveId(event.id); setCursor((event.occurred_at - start) / (end - start)); }
-  const displayed = series.map(s => ({ ...s, points: s.points.filter(p => p.time >= start && p.time <= end) }));
+  const displayed = series.map(s => ({ ...s, points: s.points.filter(p => p.time >= start && p.time < end) }));
   const values = displayed.flatMap(s => visible[s.zone] ? s.points.map(p => Number(format(p.value))) : []);
   const lo = values.length ? Math.floor(Math.min(...values) - 2) : metric === 'humidity_pct' ? 0 : metric === 'pressure_hpa' ? 980 : unit === 'F' ? 60 : 15;
   const hi = values.length ? Math.ceil(Math.max(...values) + 2) : metric === 'humidity_pct' ? 100 : metric === 'pressure_hpa' ? 1040 : unit === 'F' ? 100 : 40;
@@ -69,18 +70,30 @@ export default function History({ unit, state, rows, now }) {
   function preset(mode) {
     const start = mode === 'yesterday' ? shiftDay(today, -1) : mode === 'week' ? shiftDay(today, -6) : today;
     const end = mode === 'yesterday' ? start : today;
-    setRange({ mode, start, end }); setDraft({ start, end });
+    setRangeError(''); setRange({ mode, start, end }); setDraft({ start, end, startTime: '', endTime: '' });
   }
-  function navigate(offset) { const start = shiftDay(range.start, offset), end = shiftDay(range.end, offset); if (end <= today) { setRange({ mode: 'custom', start, end }); setDraft({ start, end }); } }
+  function applyRange(next) {
+    try {
+      const bounds = customHistoryBounds(next);
+      setRange({ mode: 'custom', ...next, bounds }); setRangeError(''); setCursor(null); setActiveId(null);
+    } catch (error) { setRangeError(error.message); }
+  }
+  function navigate(offset) {
+    const next = { startTime: range.startTime || '', endTime: range.endTime || '', start: shiftDay(range.start, offset), end: shiftDay(range.end, offset) };
+    if (next.end <= today) { setDraft(next); applyRange(next); }
+  }
   return <section className="panel history" aria-labelledby="history-title">
     <div className="panel-head"><div><h2 id="history-title">{metricLabel} history</h2><p className="muted">The rhythm of your enclosure</p></div><div className="segmented range-presets">{[['live', 'Live · 24h'], ['today', 'Today'], ['yesterday', 'Yesterday'], ['week', '7 days'], ['custom', 'Custom']].map(([key, label]) => <button key={key} aria-pressed={range.mode === key} onClick={() => preset(key)}>{label}</button>)}</div></div>
     <div className="date-controls"><label>Reading<select aria-label="Reading" value={metric} onChange={e => { setMetric(e.target.value); setCursor(null); }}><option value="temperature_c">Temperature</option><option value="humidity_pct">Humidity</option><option value="pressure_hpa">Pressure</option></select></label></div>
-    {range.mode !== 'live' && <form className="date-controls" onSubmit={e => { e.preventDefault(); setRange({ mode: 'custom', ...draft }); }}>
+    {range.mode !== 'live' && <form className="date-controls" onSubmit={e => { e.preventDefault(); applyRange(draft); }}>
       <button type="button" aria-label="Previous day" onClick={() => navigate(-1)}>←</button>
       <label>From<input type="date" required max={today} value={draft.start} onChange={e => setDraft({ ...draft, start: e.target.value })} /></label>
       <label>To<input type="date" required min={draft.start} max={today} value={draft.end} onChange={e => setDraft({ ...draft, end: e.target.value })} /></label>
-      <button type="submit">Apply dates</button><button type="button" aria-label="Next day" disabled={range.end >= today} onClick={() => navigate(1)}>→</button><span className="muted">Up to 31 days</span>
+      {range.mode === 'custom' && <><label>Start time<input type="time" value={draft.startTime} onChange={e => setDraft({ ...draft, startTime: e.target.value })} /></label><label>End time<input type="time" value={draft.endTime} onChange={e => setDraft({ ...draft, endTime: e.target.value })} /></label></>}
+      <button type="submit">Apply range</button><button type="button" aria-label="Next day" disabled={range.end >= today} onClick={() => navigate(1)}>→</button><span className="muted">Up to 31 days</span>
     </form>}
+    {range.mode === 'custom' && <p className="muted small">Times use America/New_York. Leave times blank for full days. End time is exclusive; repeated daylight-saving times include both occurrences.</p>}
+    {rangeError && <p className="warning" role="alert">{rangeError}</p>}
     <div className="legend">{series.map(s => <button key={s.zone} aria-pressed={visible[s.zone]} onClick={() => setVisible({ ...visible, [s.zone]: !visible[s.zone] })}><span className={`dot ${s.zone}`} />{LABELS[s.zone]}</button>)}</div>
     <div ref={host} className="chart-host">
       {loading ? <div className="chart-empty" role="status">Loading recorded readings…</div> : error ? <div className="chart-empty warning" role="status">{error}</div> : !values.length && !visibleEvents.length ? <div className="chart-empty">{!rows.length ? 'Zone assignments unavailable.' : 'No recorded readings in this range for the selected zones.'}</div> : <svg viewBox={`0 0 ${w} ${h}`} role="group" aria-label={`Zone ${metricLabel.toLowerCase()} in ${metricUnit}. Tap or point for values.`} onPointerMove={inspectTime} onPointerDown={inspectTime}>

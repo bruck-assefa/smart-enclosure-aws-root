@@ -1,6 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { assignments, liveZones, zoneHistory, shiftDay, serverNow } from './data.js';
+import { customHistoryBounds, assignments, liveZones, zoneHistory, shiftDay, serverNow } from './data.js';
 const sensor = (id, channel, status, time, value) => ({ sensor_id: id, hardware: { multiplexer_address: '0x70', channel }, enabled: true, status, last_success_at: time, last_good_reading: { temperature_c: value } });
 const sensors = [sensor('sensor_0', 0, 'healthy', 95, 30), sensor('sensor_5', 5, 'error', 90, 99)];
 const rows = [{ sensor_id: '0x70-ch0', zone: 'Warm' }, { sensor_id: '0x70-ch5', zone: 'Warm' }];
@@ -32,4 +32,17 @@ test('humidity and pressure histories average independently, retaining zero and 
  const map = assignments(rows, sensors);
  assert.deepEqual(zoneHistory(series, map, 'humidity_pct')[0].points, [{ time: 60, value: 10, count: 2 }, { time: 240, value: 40, count: 1 }]);
  assert.deepEqual(zoneHistory(series, map, 'pressure_hpa')[0].points, [{ time: 60, value: 1001, count: 2 }, { time: 240, value: 1004, count: 1 }]);
+});
+
+test('custom history uses enclosure wall time, exclusive ends and full-day defaults', () => {
+ assert.deepEqual(customHistoryBounds({start:'2026-09-01',end:'2026-09-01',startTime:'10:00',endTime:'11:00'}), {start:Date.parse('2026-09-01T14:00Z')/1000,end:Date.parse('2026-09-01T15:00Z')/1000});
+ for (const [day,hours] of [['2026-03-08',23],['2026-11-01',25]]) {
+  const bounds = customHistoryBounds({start:day,end:day});
+  assert.equal(bounds.end-bounds.start,hours*3600);
+ }
+ const repeated = customHistoryBounds({start:'2026-11-01',end:'2026-11-01',startTime:'01:15',endTime:'01:45'});
+ assert.equal(repeated.end-repeated.start,90*60);
+ assert.throws(()=>customHistoryBounds({start:'2026-03-08',end:'2026-03-08',startTime:'02:30'}), /may not exist/);
+ assert.throws(()=>customHistoryBounds({start:'2026-09-01',end:'2026-09-01',startTime:'12:00',endTime:'11:00'}), /must be after/);
+ assert.throws(()=>customHistoryBounds({start:'2026-09-01',end:'2026-10-02'}), /31 calendar days/);
 });
