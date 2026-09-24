@@ -13,3 +13,6 @@
 .gitattributes text eol=lf
 *.db -text
 etc/nginx/sites-available/* text eol=lf
+
+# Preserve vendored dependency bytes; source normalization does not apply here.
+home/admin/smart-enclosure-backend/node_modules/** -text
