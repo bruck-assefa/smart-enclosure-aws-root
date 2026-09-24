@@ -45,7 +45,9 @@ function state(source = "hardware", scenario = "healthy") {
         const start=Date.parse(url.searchParams.get("date")+"T00:00:00-04:00")/1000;
         return route.fulfill({contentType:"application/json",body:JSON.stringify({status:"available",start,end:start+86400,
           series:[{sensor_id:"sensor_0",label:"Sensor 0",points:[0,60,240].map(offset=>({time:start+offset,
-            temperature_c:25,minimum_c:24,maximum_c:26,samples:6}))}]})});
+            temperature_c:25,minimum_c:24,maximum_c:26,samples:6,
+            humidity_pct:40,minimum_humidity_pct:38,maximum_humidity_pct:42,
+            pressure_hpa:1000,minimum_pressure_hpa:999,maximum_pressure_hpa:1001}))}]})});
       }
       if (url.pathname === "/enclosure/state") {
         if(failState) return route.fulfill({status:503,contentType:"application/json",body:'{"detail":"offline"}'});
@@ -65,6 +67,12 @@ function state(source = "hardware", scenario = "healthy") {
     assert.match(await page.locator("#history-table tbody").textContent(), /75.2°F/);
     await page.locator("#unit-toggle").click();
     assert.match(await page.locator("#history-table tbody").textContent(), /24.0°C/);
+    await page.locator("#history-metric").selectOption("humidity_pct");
+    assert.match(await page.locator("#history-table tbody").textContent(), /38.0% RH/);
+    await page.locator("#history-metric").selectOption("pressure_hpa");
+    assert.match(await page.locator("#history-table tbody").textContent(), /999.0 hPa/);
+    assert.equal((await page.locator("#temperature-chart path").getAttribute("d")).match(/M/g).length, 2);
+    await page.locator("#history-metric").selectOption("temperature_c");
     await page.locator("#history-date").fill("2026-09-01");
     await page.locator("#history-date").dispatchEvent("change");
     await page.waitForFunction(() => document.querySelector("#history-status").textContent.includes("saved historical day"));

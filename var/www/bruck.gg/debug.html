@@ -56,18 +56,19 @@
     <p id="message" role="status"></p>
   </section>
   <section class="panel" aria-labelledby="history-heading">
-    <h2 id="history-heading">Temperature history</h2>
+    <h2 id="history-heading">Sensor history</h2>
     <div class="toolbar">
       <label>Day <input type="date" id="history-date"></label>
+      <label>Reading <select id="history-metric"><option value="temperature_c">Temperature</option><option value="humidity_pct">Humidity</option><option value="pressure_hpa">Pressure</option></select></label>
       <button id="history-today">Today</button>
     </div>
     <p>Enclosure time: America/New_York. One-minute averages from readings sampled every 10 seconds. Gaps indicate missing readings; lines do not extend across outages.</p>
     <p id="history-storage"></p>
     <p id="history-status" role="status">Loading history…</p>
-    <div id="history-legend" aria-label="Visible temperature series"></div>
+    <div id="history-legend" aria-label="Visible sensor series"></div>
     <svg id="temperature-chart" viewBox="0 0 1000 340" role="img" aria-label="Daily temperature graph"></svg>
     <p id="history-cursor">Point values and sample counts appear when you point at the graph.</p>
-    <details><summary>Daily temperature summary</summary>
+    <details><summary>Daily reading summary</summary>
       <table id="history-table"><thead><tr><th>Sensor</th><th>Minimum</th><th>Maximum</th><th>Samples</th></tr></thead><tbody></tbody></table>
     </details>
     <p>Earlier logging remains archived separately; this graph shows readings collected by the new AWS history service. Simulation is never stored as real history.</p>

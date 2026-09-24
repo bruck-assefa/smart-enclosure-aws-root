@@ -49,7 +49,11 @@ ON CONFLICT (measured_at, sensor_id) DO NOTHING"""
 SELECT = """SELECT sensor_id, max(label) AS label,
  date_bin('1 minute', measured_at, TIMESTAMPTZ '2000-01-01') AS bucket,
  avg(temperature_c) AS temperature_c, min(temperature_c) AS minimum_c,
- max(temperature_c) AS maximum_c, count(*) AS samples
+ max(temperature_c) AS maximum_c, count(*) AS samples,
+ avg(humidity_pct) AS humidity_pct, min(humidity_pct) AS minimum_humidity_pct,
+ max(humidity_pct) AS maximum_humidity_pct,
+ avg(pressure_hpa) AS pressure_hpa, min(pressure_hpa) AS minimum_pressure_hpa,
+ max(pressure_hpa) AS maximum_pressure_hpa
 FROM enclosure_history.readings
 WHERE measured_at >= $1 AND measured_at < $2
 GROUP BY sensor_id, bucket ORDER BY sensor_id, bucket"""
@@ -132,7 +136,9 @@ class History:
                          "label": row["label"], "points": []})
             series["points"].append({"time": row["bucket"].timestamp(),
                 "temperature_c": row["temperature_c"], "minimum_c": row["minimum_c"],
-                "maximum_c": row["maximum_c"], "samples": row["samples"]})
+                "maximum_c": row["maximum_c"], "samples": row["samples"],
+                **{key: row[key] for key in ("humidity_pct", "minimum_humidity_pct",
+                   "maximum_humidity_pct", "pressure_hpa", "minimum_pressure_hpa", "maximum_pressure_hpa")}})
         result = {"status": "available", "date": value, "timezone": "America/New_York",
                   "start": start.timestamp(), "end": end.timestamp(),
                   "bucket_seconds": BUCKET, "series": list(grouped.values())}
@@ -171,7 +177,8 @@ class History:
         for row in rows:
             item = grouped.setdefault(row['sensor_id'], {'sensor_id': row['sensor_id'], 'points': []})
             item['points'].append({'time': row['bucket'].timestamp(), 'temperature_c': row['temperature_c'],
-                                  'samples': row['samples']})
+                                  'samples': row['samples'], 'humidity_pct': row['humidity_pct'],
+                                  'pressure_hpa': row['pressure_hpa']})
         result = {'status': 'available', 'start': start.timestamp(), 'end': end.timestamp(),
                   'timezone': str(ZONE), 'bucket_seconds': bucket, 'series': list(grouped.values())}
         if len(self.cache) >= 8:

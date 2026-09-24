@@ -1,4 +1,4 @@
-# AWS temperature history
+# AWS sensor history
 
 ## Scope and current evidence
 
@@ -152,3 +152,27 @@ and API error sanitization, alongside existing control/preview regressions.
 Read-only VALUES-based aggregation was also checked on actual AWS PostgreSQL 15.
 The new migration, privileges, real inserts and actual deployed graph still require
 the authorized remote verification above; they have not been exercised remotely.
+
+## Humidity and pressure graph selection
+
+Both the main dashboard and debug history graph offer a Reading selector for
+Temperature, Humidity (% RH), and Pressure (hPa). One metric is displayed at a
+time with its own scale; temperature alone follows the Celsius/Fahrenheit setting.
+Date/range and zone/sensor visibility controls continue to apply. Inspection,
+accessibility labels, and the debug daily min/max summary follow the selection.
+Missing values remain gaps rather than zeroes; zone averages count only sensors
+with a finite value for the selected metric.
+
+The existing recorder and NOT NULL database columns already retain all three
+metrics. Day and range responses now include humidity_pct and pressure_hpa;
+the day endpoint also includes minimum_/maximum_humidity_pct and
+minimum_/maximum_pressure_hpa. Existing temperature response fields and URLs
+remain compatible. No Pi changes, backfill, or database migration are required.
+
+Validation: API unittest suite, frontend unit tests/lint/build, and intercepted
+browser fixtures in tests/dashboard.spec.cjs and tests/history-metrics.cjs.
+Deployment still requires authorization: commit/push the reviewed source and
+built dashboard assets, follow DEPLOYMENT_WORKFLOW.md with the guarded updater,
+and restart smart-enclosure-api to activate the expanded queries. Verify all
+three metrics against AWS history and confirm recording continues. Local tests
+do not verify deployed database contents or runtime behavior.

@@ -29,15 +29,15 @@ export function liveZones(state, rows, now) {
       age: valid.length ? Math.max(...valid.map(s => Math.floor(now - s.last_success_at))) : null };
   });
 }
-export function zoneHistory(series, map) {
+export function zoneHistory(series, map, field = 'temperature_c') {
   const groups = Object.fromEntries(ZONES.map(z => [z, new Map()]));
   for (const s of series) {
     const buckets = groups[map[s.sensor_id]];
     if (!buckets) continue;
     for (const p of s.points) {
-      if (!Number.isFinite(p.temperature_c)) continue;
+      if (!Number.isFinite(p[field])) continue;
       const b = buckets.get(p.time) || { time: p.time, sum: 0, count: 0 };
-      b.sum += p.temperature_c; b.count += 1; buckets.set(p.time, b);
+      b.sum += p[field]; b.count += 1; buckets.set(p.time, b);
     }
   }
   return ZONES.map(zone => ({ zone, points: [...groups[zone].values()].sort((a, b) => a.time - b.time).map(b => ({ time: b.time, value: b.sum / b.count, count: b.count })) }));

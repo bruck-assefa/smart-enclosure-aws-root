@@ -12,8 +12,11 @@
   const clock = stamp => new Intl.DateTimeFormat("en-US", {timeZone:zone,hour:"numeric",minute:"2-digit",timeZoneName:"short"}).format(new Date(stamp*1000));
   let data = null, fahrenheit = true, controller = null, timer = null, generation = 0, followToday = true;
   const hidden = new Set();
-  const temp = c => fahrenheit ? c*9/5+32 : c;
-  const unit = () => fahrenheit ? "°F" : "°C";
+  let metric = "temperature_c";
+  const temp = c => metric === "temperature_c" && fahrenheit ? c*9/5+32 : c;
+  const minimumKey = () => metric === "temperature_c" ? "minimum_c" : `minimum_${metric}`;
+  const maximumKey = () => metric === "temperature_c" ? "maximum_c" : `maximum_${metric}`;
+  const unit = () => metric === "humidity_pct" ? "% RH" : metric === "pressure_hpa" ? " hPa" : fahrenheit ? "°F" : "°C";
   const svg = (tag, attrs, text) => {
     const el = document.createElementNS(svgNS,tag);
     for (const [key,value] of Object.entries(attrs)) el.setAttribute(key,value);
@@ -23,10 +26,11 @@
   const status = text => { $("history-status").textContent=text; };
   function draw() {
     const chart = $("temperature-chart"); chart.replaceChildren();
+    chart.setAttribute("aria-label", `Daily ${metric === "temperature_c" ? "temperature" : metric === "humidity_pct" ? "humidity" : "pressure"} graph in ${unit()}`);
     $("history-table").querySelector("tbody").replaceChildren();
     if (!data?.series.length) return;
     const series = data.series.filter(s => !hidden.has(s.sensor_id));
-    const values = series.flatMap(s => s.points.map(p => temp(p.temperature_c)));
+    const values = series.flatMap(s => s.points.filter(p => Number.isFinite(p[metric])).map(p => temp(p[metric])));
     if (!values.length) return;
     let low=Infinity, high=-Infinity;
     for(const value of values) { low=Math.min(low,value); high=Math.max(high,value); }
@@ -45,16 +49,18 @@
     data.series.forEach((s,index) => {
       if(hidden.has(s.sensor_id)) return;
       let path="", previous=null, minimum=Infinity, maximum=-Infinity, count=0;
-      for(const p of s.points) {
-        path += `${previous===null || p.time-previous>90 ? "M" : "L"}${x(p.time).toFixed(2)},${y(p.temperature_c).toFixed(2)} `;
-        previous=p.time; minimum=Math.min(minimum,p.minimum_c); maximum=Math.max(maximum,p.maximum_c); count+=p.samples;
+      const points = s.points.filter(p => Number.isFinite(p[metric]));
+      if (!points.length) return;
+      for(const p of points) {
+        path += `${previous===null || p.time-previous>90 ? "M" : "L"}${x(p.time).toFixed(2)},${y(p[metric]).toFixed(2)} `;
+        previous=p.time; minimum=Math.min(minimum,p[minimumKey()]); maximum=Math.max(maximum,p[maximumKey()]); count+=p.samples;
       }
       const color=colors[index%colors.length];
       chart.append(svg("path",{d:path,fill:"none",stroke:color,"stroke-width":2,"data-sensor":s.sensor_id}));
       // Dots ensure a lone reading is visible, including isolated points after an outage.
-      s.points.forEach((p,i) => {
-        if(i===0 || i===s.points.length-1 || p.time-s.points[i-1].time>90 || s.points[i+1].time-p.time>90)
-          chart.append(svg("circle",{cx:x(p.time),cy:y(p.temperature_c),r:2,fill:color}));
+      points.forEach((p,i) => {
+        if(i===0 || i===points.length-1 || p.time-points[i-1].time>90 || points[i+1].time-p.time>90)
+          chart.append(svg("circle",{cx:x(p.time),cy:y(p[metric]),r:2,fill:color}));
       });
       const row=document.createElement("tr");
       for(const value of [s.label, temp(minimum).toFixed(1)+unit(), temp(maximum).toFixed(1)+unit(), count]) {
@@ -81,7 +87,7 @@
     for(const s of data.series) {
       if(hidden.has(s.sensor_id)) continue;
       const p=s.points.reduce((best,p)=>!best || Math.abs(p.time-time)<Math.abs(best.time-time)?p:best,null);
-      if(p && Math.abs(p.time-time)<60) parts.push(`${s.label}: ${temp(p.temperature_c).toFixed(1)}${unit()} (${p.samples} samples)`);
+      if(p && Number.isFinite(p[metric]) && Math.abs(p.time-time)<60) parts.push(`${s.label}: ${temp(p[metric]).toFixed(1)}${unit()} (${p.samples} samples)`);
     }
     $("history-cursor").textContent=clock(time)+" — "+(parts.join(" · ") || "No readings here");
   });
@@ -124,6 +130,11 @@
     status("Loading history…");
     if(controller) controller.abort();else load();
   }
+  $("history-metric").addEventListener("change", event => {
+    metric = event.target.value;
+    $("history-cursor").textContent = "Point at the graph to inspect recorded readings.";
+    draw();
+  });
   $("history-date").value=day();$("history-date").max=day();
   $("history-date").addEventListener("change",()=>{followToday=$("history-date").value===day();change();});
   $("history-today").addEventListener("click",()=>{followToday=true;$("history-date").value=day();change();});

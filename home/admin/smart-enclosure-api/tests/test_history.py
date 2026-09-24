@@ -110,7 +110,9 @@ class StorageTests(unittest.IsolatedAsyncioTestCase):
                 return Context()
             fetch = AsyncMock(return_value=[dict(sensor_id="sensor_0",label="Sensor 0",
                 bucket=datetime(2026,9,16,12,tzinfo=timezone.utc),temperature_c=25,
-                minimum_c=24,maximum_c=26,samples=6)])
+                minimum_c=24,maximum_c=26,samples=6, humidity_pct=40,
+                minimum_humidity_pct=38, maximum_humidity_pct=42, pressure_hpa=1000,
+                minimum_pressure_hpa=999, maximum_pressure_hpa=1001)])
         conn = Connection()
         class Pool:
             def acquire(self, **kw): return Context()
@@ -120,8 +122,19 @@ class StorageTests(unittest.IsolatedAsyncioTestCase):
         second = await history.read_day("2026-09-16")
         self.assertEqual(first, second)
         self.assertEqual(first["series"][0]["points"][0]["samples"], 6)
+        point = first["series"][0]["points"][0]
+        self.assertEqual((point["humidity_pct"], point["pressure_hpa"]), (40, 1000))
+        self.assertEqual((point["minimum_humidity_pct"], point["maximum_pressure_hpa"]), (38, 1001))
         conn.fetch.assert_awaited_once()
         self.assertEqual(conn.fetch.call_args.args[1:], day_bounds("2026-09-16"))
+        for days, bucket in ((1, 60), (7, 300), (31, 1800)):
+            history.cache.clear()
+            result = await history.read_range("2026-09-16", "2026-09-16", days)
+            point = result["series"][0]["points"][0]
+            self.assertEqual((point["temperature_c"], point["humidity_pct"], point["pressure_hpa"]), (25, 40, 1000))
+            self.assertEqual(result["bucket_seconds"], bucket)
+            self.assertIn("avg(humidity_pct)", conn.fetch.call_args.args[0])
+            self.assertIn("avg(pressure_hpa)", conn.fetch.call_args.args[0])
 
 
 class RouteTests(unittest.TestCase):
