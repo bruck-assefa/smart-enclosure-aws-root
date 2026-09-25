@@ -2,7 +2,7 @@ import copy
 import json
 import unittest
 from datetime import date, datetime, timezone
-from unittest.mock import AsyncMock
+from unittest.mock import AsyncMock, MagicMock
 
 from fastapi.testclient import TestClient
 from app import create_app
@@ -67,6 +67,18 @@ class RecurrenceTests(unittest.TestCase):
         result = present(data, datetime(2026, 11, 2, 5, 0, tzinfo=timezone.utc))
         self.assertEqual(result['today'], ['bugs'])
 
+    def test_overdue_carries_until_confirmed(self):
+        data = payload()
+        data['schedules']['bugs'] = interval('2026-09-18', 2)
+        data['tracking'] = {'bugs': '2026-09-18', 'salad': '2026-09-18'}
+        result = present(data, datetime(2026, 9, 25, 12, tzinfo=ZONE))
+        self.assertEqual(result['today'], ['bugs'])
+        self.assertEqual(result['due']['bugs'], '2026-09-18')
+        self.assertEqual(result['upcoming'][0]['foods'], ['bugs'])
+        self.assertEqual(result['next']['bugs'], '2026-09-26')
+        data['tracking']['bugs'] = '2026-09-26'
+        self.assertEqual(present(data, datetime(2026, 9, 25, 12, tzinfo=ZONE))['today'], [])
+
     def test_invalid_payloads(self):
         patches = [{'enabled': True}, {'weekdays': [True]}, {'weekdays': [7]},
                    {'weekdays': [1, 1]}, {'every_days': 0}, {'every_days': 366},
@@ -83,6 +95,7 @@ class RecurrenceTests(unittest.TestCase):
 class StorageTests(unittest.IsolatedAsyncioTestCase):
     async def test_save_binds_version_and_reports_conflict(self):
         conn = AsyncMock()
+        conn.transaction = MagicMock(return_value=AsyncMock())
         class Context:
             async def __aenter__(self): return conn
             async def __aexit__(self, *args): pass
@@ -97,12 +110,40 @@ class StorageTests(unittest.IsolatedAsyncioTestCase):
         conn.fetchrow.return_value = row
         saved = await store.save(payload())
         self.assertEqual(saved['version'], 1)
-        args = conn.fetchrow.call_args.args
+        args = conn.fetchrow.call_args_list[0].args
         self.assertIn('version=$2', args[0])
         self.assertEqual(args[2], 0)
         self.assertEqual(json.loads(args[1]), payload()['schedules'])
         conn.fetchrow.return_value = None
         with self.assertRaises(Conflict): await store.save(payload())
+
+    async def test_confirmation_records_and_advances_once(self):
+        conn = AsyncMock()
+        conn.transaction = MagicMock(return_value=AsyncMock())
+        pool = MagicMock()
+        pool.acquire.return_value = AsyncMock()
+        pool.acquire.return_value.__aenter__.return_value = conn
+        history = AsyncMock(dsn='test-only')
+        history.database.return_value = pool
+        row = payload()
+        today = datetime.now(ZONE).date()
+        row['schedules']['bugs'] = interval(today.isoformat(), 1)
+        row['tracking'] = {food: today.isoformat() for food in ('salad', 'bugs')}
+        conn.fetchrow.return_value = row
+        store = Feeding(history)
+        body = {'food': 'bugs', 'version': 0, 'date': today.isoformat()}
+        await store.complete(body)
+        self.assertEqual(conn.execute.await_count, 2)
+        self.assertEqual(conn.execute.call_args_list[0].args[1:4], ('bugs', today, today))
+        row['version'] = 1
+        with self.assertRaises(Conflict):
+            await store.complete(body)
+        self.assertEqual(conn.execute.await_count, 2)
+        body['version'] = 1
+        body['date'] = '2000-01-01'
+        with self.assertRaises(Conflict):
+            await store.complete(body)
+
 
 
 class RouteTests(unittest.TestCase):
@@ -112,6 +153,7 @@ class RouteTests(unittest.TestCase):
         self.client.__enter__()
         self.app.state.feeding.read = AsyncMock(return_value=present(payload()))
         self.app.state.feeding.save = AsyncMock(return_value=present(payload()))
+        self.app.state.feeding.complete = AsyncMock(return_value=present(payload()))
         self.headers = {'X-Enclosure-Control': '1'}
 
     def tearDown(self):
@@ -154,3 +196,17 @@ class RouteTests(unittest.TestCase):
         self.assertEqual(result.status_code, 503)
         self.assertNotIn('secret-dsn', result.text)
         self.assertEqual(self.client.get('/state').status_code, 200)
+
+    def test_completion_guards_validation_and_conflict(self):
+        body = {'version': 0, 'food': 'bugs', 'date': '2026-09-25'}
+        url = '/feeding/complete?source=hardware'
+        self.assertEqual(self.client.post(url, headers=self.headers, json=body).status_code, 403)
+        self.app.state.gateway.live_enabled = True
+        self.assertEqual(self.client.post(url, json=body).status_code, 403)
+        self.assertEqual(self.client.post('/feeding/complete?source=simulation', headers=self.headers, json=body).status_code, 403)
+        self.assertEqual(self.client.post(url, headers=self.headers, json=dict(body, food='other')).status_code, 400)
+        self.assertEqual(self.client.post(url, headers=self.headers, content='x'*2049).status_code, 413)
+        self.app.state.feeding.complete.assert_not_awaited()
+        self.assertEqual(self.client.post(url, headers=self.headers, json=body).status_code, 200)
+        self.app.state.feeding.complete.side_effect = Conflict('Already completed')
+        self.assertEqual(self.client.post(url, headers=self.headers, json=body).status_code, 409)

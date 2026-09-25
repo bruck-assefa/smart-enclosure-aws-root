@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 from events import Events, router as events_router
 from history import History, day_bounds
-from feeding import Feeding, Conflict, validate as validate_feeding
+from feeding import Feeding, Conflict, validate as validate_feeding, validate_completion
 from sensor_contract import new_snapshot, aged, validate_snapshot
 from sensor_simulator import simulate, SCENARIOS
 
@@ -264,6 +264,27 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
             raise HTTPException(409, str(error))
         except Exception:
             raise HTTPException(503, 'Save could not be confirmed. Reload the saved plan before retrying.')
+
+    @app.post('/feeding/complete')
+    async def complete_feeding(request: Request):
+        if request.query_params.get('source') != 'hardware' or request.headers.get('X-Enclosure-Control') != '1' or not app.state.gateway.live_enabled:
+            raise HTTPException(403, 'Explicit live feeding confirmation required')
+        raw = bytearray()
+        async for chunk in request.stream():
+            raw.extend(chunk)
+            if len(raw) > 2048:
+                raise HTTPException(413, 'Feeding confirmation too large')
+        try:
+            body = json.loads(raw)
+            validate_completion(body)
+        except (ValueError, TypeError):
+            raise HTTPException(400, 'Invalid feeding confirmation')
+        try:
+            return await asyncio.wait_for(app.state.feeding.complete(body), 3)
+        except Conflict as error:
+            raise HTTPException(409, str(error))
+        except Exception:
+            raise HTTPException(503, 'Confirmation could not be verified. Refresh before retrying.')
 
     async def command(request, path, body=None):
         gateway = app.state.gateway

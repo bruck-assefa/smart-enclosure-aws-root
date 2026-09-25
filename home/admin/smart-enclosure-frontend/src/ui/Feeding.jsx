@@ -13,12 +13,24 @@ function FoodTag({ food }) {
 }
 
 export function FeedingToday({ feeding }) {
-  const { data, fresh, error } = feeding;
+  const { data, fresh, error, accept, refresh } = feeding;
+  const [busy, setBusy] = useState(false), [message, setMessage] = useState('');
+  async function complete(food) {
+    if (!fresh || busy) return;
+    setBusy(true); setMessage('Recording feeding…');
+    try {
+      const saved = await api('/feeding/complete?source=hardware', { method: 'POST', headers: { 'Content-Type': 'application/json', 'X-Enclosure-Control': '1' }, body: JSON.stringify({ food, version: data.version, date: data.date }) });
+      accept(saved); setMessage(`${NAMES[food]} feeding recorded.`);
+    } catch (e) { setMessage(e.message); await refresh(); }
+    finally { setBusy(false); }
+  }
   const configured = data && FOODS.some(food => data.schedules[food].enabled);
   return <section className="panel feeding-today" aria-labelledby="feeding-today-title">
     <div><p className="eyebrow" id="feeding-today-title">FEEDING TODAY</p>
-      <div className="feeding-today-value">{!fresh ? <span>{error ? 'Schedule unavailable' : 'Checking feeding schedule…'}</span> : !configured ? <span>Choose a feeding routine</span> : data.today.length ? data.today.map(food => <FoodTag key={food} food={food} />) : <span>No feeding scheduled today</span>}</div>
+      <div className="feeding-today-value">{!fresh ? <span>{error ? 'Schedule unavailable' : 'Checking feeding schedule…'}</span> : !configured ? <span>Choose a feeding routine</span> : data.today.length ? data.today.map(food => <div className="feeding-action" key={food}><FoodTag food={food} /><button type="button" disabled={busy} onClick={() => complete(food)}>Mark {NAMES[food].toLowerCase()} fed</button>{data.due?.[food] < data.date && <span className="muted small">Carried over from {formatDay(data.due[food])}</span>}</div>) : <span>No feeding due today</span>}</div>
       <p className="muted small">{fresh ? `${formatDay(data.date)} · enclosure time` : 'Waiting for the saved plan'}</p>
+      <p className="muted small">Unconfirmed feedings carry forward each day until marked fed.</p>
+      <p role="status" className="small">{message}</p>
     </div>
     {fresh && configured && <div className="feeding-next">{FOODS.filter(food => data.next[food]).map(food => <p key={food}>Next {NAMES[food].toLowerCase()} <strong>{formatDay(data.next[food])}</strong></p>)}</div>}
     <a className="feeding-settings-link" href="#settings">{configured ? 'Edit feeding schedule' : 'Set up feeding schedule'} →</a>
@@ -64,7 +76,7 @@ export function FeedingSettings({ feeding }) {
     finally { setBusy(false); }
   }
   return <section className="feeding-settings" aria-labelledby="feeding-settings-title">
-    <div className="settings-section-heading"><h2 id="feeding-settings-title">Feeding schedule</h2><p className="muted">Choose weekdays or repeat every N days. Salad and bugs can share a day.</p></div>
+    <div className="settings-section-heading"><h2 id="feeding-settings-title">Feeding schedule</h2><p className="muted">Choose weekdays or repeat every N days. Salad and bugs can share a day. Changing a food’s routine resets its outstanding feeding; history is kept.</p></div>
     {!draft ? <div className="panel empty"><p role="status">{error || 'Loading feeding settings…'}</p>{error && <button type="button" onClick={refresh}>Retry</button>}</div> : <form onSubmit={save}>
       {error && <p className="notice warning" role="status">{error} Your edits will be kept until you can save.</p>}
       <div className="settings-grid">{FOODS.map(food => {
@@ -83,6 +95,7 @@ export function FeedingSettings({ feeding }) {
       })}</div>
       <div className="feeding-save"><button type="submit" className="primary" disabled={!fresh || !dirty || busy}>{busy ? 'Working…' : 'Save feeding schedule'}</button><button type="button" disabled={busy} onClick={reload}>Reload saved plan</button><p role="status">{message || 'Schedules use America/New_York calendar days.'}</p></div>
     </form>}
-    {fresh && data && FOODS.some(food => data.schedules[food].enabled) && <div className="feeding-week"><h3>Saved plan · next 7 days</h3><div className="feeding-week-grid">{data.upcoming.map((day, i) => <div key={day.date} className="feeding-day"><strong>{i === 0 ? 'Today' : formatDay(day.date).split(',')[0]}</strong><span className="muted small">{formatDay(day.date).split(',').slice(1).join(',').trim()}</span><div>{day.foods.length ? day.foods.map(food => <FoodTag key={food} food={food} />) : <span className="muted small">No feeding</span>}</div></div>)}</div></div>}
+    {fresh && data && FOODS.some(food => data.schedules[food].enabled) && <div className="feeding-week"><h3>Saved routine · next 7 days</h3><div className="feeding-week-grid">{data.upcoming.map((day, i) => <div key={day.date} className="feeding-day"><strong>{i === 0 ? 'Today' : formatDay(day.date).split(',')[0]}</strong><span className="muted small">{formatDay(day.date).split(',').slice(1).join(',').trim()}</span><div>{day.foods.length ? day.foods.map(food => <FoodTag key={food} food={food} />) : <span className="muted small">No feeding</span>}</div></div>)}</div></div>}
+    {fresh && data && <section className="feeding-history" aria-labelledby="feeding-history-title"><h3 id="feeding-history-title">Feeding history</h3><p className="muted small">Latest 100 confirmations · enclosure time. Missed feedings of the same food combine into one outstanding feeding; future dates follow the saved routine.</p>{data.history?.length ? <div className="feeding-history-scroll"><table><thead><tr><th>Food</th><th>Scheduled</th><th>Completed</th></tr></thead><tbody>{data.history.map(item => <tr key={`${item.food}-${item.completed_date}`}><td><FoodTag food={item.food} /></td><td>{item.scheduled_date}</td><td>{item.completed_date}</td></tr>)}</tbody></table></div> : <p className="muted">No feedings confirmed yet.</p>}</section>}
   </section>;
 }
