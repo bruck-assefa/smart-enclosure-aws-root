@@ -5,41 +5,23 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>Enclosure status and diagnostics</title>
   <style>
-    :root { color-scheme: dark; font-family: system-ui, sans-serif; background: #121212; color: #eee; }
-    body { max-width: 1200px; margin: auto; padding: 20px; }
-    h1 { font-size: 1.7rem; } h3 { margin: 0 0 10px; }
-    .toolbar { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; }
-    button, select, input { font: inherit; padding: 9px; border: 1px solid #666; border-radius: 5px; }
-    button { cursor: pointer; } button:disabled { cursor: default; opacity: .5; }
-    .panel, .sensor-box, .relay-item { background: #202020; border: 1px solid #454545; border-radius: 8px; padding: 16px; }
-    .panel { margin: 18px 0; }
-    #sensor-container, #relay-container { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr)); gap: 14px; }
-    .sensor-box { border-left: 5px solid #888; }
-    .healthy { border-left-color: #49c6a0; }
-    .error { border-left-color: #f17b86; }
-    .stale { border-left-color: #eab65b; }
-    .disabled { border-left-color: #777; color: #bbb; }
-    .reading { font-size: 1.2rem; }
-    details { margin-top: 12px; font-size: .9rem; overflow-wrap: anywhere; }
-    summary { cursor: pointer; }
-    #simulation-banner { background: #493414; border: 1px solid #eab65b; padding: 14px; }
-    #message { color: #eab65b; }
-    .relay-item label { display: block; margin: 10px 0; }
-    iframe { width: 100%; height: 400px; border: 0; margin-top: 12px; }
-    #temperature-chart { width: 100%; height: auto; display: block; }
-    #history-legend { display: flex; flex-wrap: wrap; gap: 14px; margin: 12px 0; }
-    #history-legend label { display: inline-flex; align-items: center; gap: 5px; }
-    #history-table { width: 100%; border-collapse: collapse; font-size: .9rem; }
-    #history-table th, #history-table td { padding: 8px 4px; text-align: left; border-bottom: 1px solid #454545; }
-    #history-status, #history-storage { color: #c9d5df; }
-    [hidden] { display: none !important; }
+    :root { color-scheme: light; font-family: Inter, 'Segoe UI', sans-serif; background: #f0f7fd; color: #203b55; --surface:#fff; --line:#d7e5f1; --muted:#536e86; --good:#207451; --warn:#8b5b16; --bad:#b43d48; --soft:#e7f2fc; }
+    :root[data-theme=dark] { color-scheme:dark; background:#0e1926; color:#e0eaf5; --surface:#172638; --line:#334a60; --muted:#a9bdd0; --good:#8bcba3; --warn:#f0c47e; --bad:#ff9ba7; --soft:#243f58; }
+    * { box-sizing:border-box; } body { max-width:1200px; margin:auto; padding:24px; } a { color:inherit; } h1 { font-size:24px; margin:5px 0; } h2 { font-size:17px; margin:0; } p { margin:6px 0; } .muted, .hint { color:var(--muted); font-size:12px; } .page-head, .toolbar, .section-head { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:12px; } .page-head { margin:16px 0; } .toolbar { justify-content:flex-start; font-size:12px; }
+    button, select, input { font:inherit; padding:8px 10px; min-height:40px; border:1px solid var(--line); border-radius:7px; background:var(--surface); color:inherit; max-width:100%; } button { cursor:pointer; } button:disabled { cursor:default; opacity:.5; } :is(button,select,input,summary,a):focus-visible { outline:3px solid #4a91c6; outline-offset:3px; }
+    .health-grid { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:10px; margin:18px 0 12px; } .health-card { border:1px solid var(--line); border-radius:10px; background:var(--surface); padding:13px; min-width:0; } .health-card h2 { font-size:12px; font-weight:500; color:var(--muted); } .health-card strong { display:block; font-size:18px; margin:4px 0; } .health-card strong::before { content:'●'; font-size:10px; vertical-align:middle; margin-right:7px; } .health-card p { font-size:11px; color:var(--muted); overflow-wrap:anywhere; }
+    [data-state=good] strong, .healthy .sensor-status { color:var(--good); } [data-state=warn] strong, .stale .sensor-status { color:var(--warn); } [data-state=bad] strong, .error .sensor-status, .unavailable .sensor-status { color:var(--bad); } [data-state=unknown] strong, .disabled { color:var(--muted); }
+    .section-head { margin:22px 0 10px; } .sensor-table { border:1px solid var(--line); border-radius:10px; overflow:hidden; background:var(--surface); } .sensor-columns, .sensor-line { display:grid; grid-template-columns:1.1fr 1fr 1fr 1fr 1fr .8fr; gap:10px; align-items:center; } .sensor-columns { background:var(--soft); padding:10px 14px; font-size:11px; color:var(--muted); } .sensor-box { padding:10px 14px; border-top:1px solid var(--line); font-size:12px; } .sensor-line h3 { font-size:13px; margin:0; } .sensor-status { font-size:11px; font-weight:600; } .reading { font-variant-numeric:tabular-nums; font-weight:600; } .sensor-box details { font-size:11px; margin-top:5px; color:var(--muted); } summary { cursor:pointer; width:fit-content; } .diagnostics { display:grid; grid-template-columns:1fr 1fr; gap:2px 18px; margin-top:8px; overflow-wrap:anywhere; } .diagnostics p { margin:2px 0; }
+    .panel { background:var(--surface); border:1px solid var(--line); border-radius:10px; padding:14px; margin:14px 0; } .panel > summary { font-weight:600; font-size:14px; } .panel > .hint { margin:10px 0; } #relay-container { display:grid; grid-template-columns:repeat(4,minmax(0,1fr)); gap:12px; } .relay-item { border:1px solid var(--line); border-radius:8px; padding:12px; font-size:12px; min-width:0; } .relay-item h3 { margin:0; font-size:14px; } .relay-item label { display:block; margin:8px 0; } .relay-item input { width:100%; } iframe { width:100%; height:400px; border:0; margin-top:12px; } #simulation-banner { background:var(--soft); border:1px solid var(--warn); padding:12px; font-size:12px; } #message { color:var(--warn); font-size:12px; } #message:empty { display:none; } [hidden] { display:none!important; } .mobile-label { display:none; }
+    @media(max-width:750px) { body { padding:16px; } .health-grid { grid-template-columns:repeat(2,minmax(0,1fr)); } #relay-container { grid-template-columns:1fr 1fr; } .sensor-columns { display:none; } .sensor-line { grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; } .sensor-line h3 { grid-column:span 2; } .sensor-line .updated { grid-column:1/-1; } .mobile-label { display:block; color:var(--muted); font-size:10px; font-weight:400; } .diagnostics { grid-template-columns:1fr; } }
+    @media(max-width:400px) { #relay-container { grid-template-columns:1fr; } }
   </style>
+  <script>try { if (localStorage.getItem('enclosure-theme') === 'dark') document.documentElement.dataset.theme = 'dark'; } catch { /* Use light when storage is unavailable. */ }</script>
   <script src="/js/enclosure.js" defer></script>
-  <script src="/js/history.js" defer></script>
 </head>
 <body>
-  <a href="/smart/" style="color:#a7d5b9">← Enclosure overview</a>
-  <h1>Enclosure status &amp; diagnostics</h1>
+  <a href="/smart/">← Enclosure overview</a>
+  <div class="page-head"><div><h1>Enclosure diagnostics</h1><p class="muted">Live service health and sensor readings · refreshes every 5 seconds</p></div></div>
   <div class="toolbar">
     <label>Data source <select id="source"><option value="hardware">Live enclosure</option><option value="simulation">Simulation</option></select></label>
     <label id="scenario-label" hidden>Scenario <select id="scenario">
@@ -50,42 +32,30 @@
     <button id="unit-toggle">Show °C</button>
   </div>
   <p id="simulation-banner" hidden>SIMULATION — synthetic readings. Physical controls and camera are disabled. Production collection is unchanged.</p>
-  <section class="panel" aria-label="System health">
-    <p id="connection" role="status">Waiting for AWS state…</p>
-    <p id="summary"></p>
-    <p id="message" role="status"></p>
+  <section class="health-grid" aria-label="System health">
+    <article class="health-card" id="aws-card" data-state="unknown"><h2>AWS API</h2><strong id="aws-status">Checking</strong><p id="aws-detail">Waiting for a response</p></article>
+    <article class="health-card" id="pi-card" data-state="unknown"><h2>Raspberry Pi</h2><strong id="pi-status">Unknown</strong><p id="pi-detail">Waiting for AWS state</p></article>
+    <article class="health-card" id="collector-card" data-state="unknown"><h2>Sensor collector</h2><strong id="collector-status">Unknown</strong><p id="collector-detail">Pi collection process</p></article>
+    <article class="health-card" id="history-card" data-state="unknown"><h2>History storage</h2><strong id="history-status">Unknown</strong><p id="history-detail">AWS recording service</p></article>
   </section>
-  <section class="panel" aria-labelledby="history-heading">
-    <h2 id="history-heading">Sensor history</h2>
-    <div class="toolbar">
-      <label>Day <input type="date" id="history-date"></label>
-      <label>Reading <select id="history-metric"><option value="temperature_c">Temperature</option><option value="humidity_pct">Humidity</option><option value="pressure_hpa">Pressure</option></select></label>
-      <button id="history-today">Today</button>
-    </div>
-    <p>Enclosure time: America/New_York. One-minute averages from readings sampled every 10 seconds. Gaps indicate missing readings; lines do not extend across outages.</p>
-    <p id="history-storage"></p>
-    <p id="history-status" role="status">Loading history…</p>
-    <div id="history-legend" aria-label="Visible sensor series"></div>
-    <svg id="temperature-chart" viewBox="0 0 1000 340" role="img" aria-label="Daily temperature graph"></svg>
-    <p id="history-cursor">Point values and sample counts appear when you point at the graph.</p>
-    <details><summary>Daily reading summary</summary>
-      <table id="history-table"><thead><tr><th>Sensor</th><th>Minimum</th><th>Maximum</th><th>Samples</th></tr></thead><tbody></tbody></table>
-    </details>
-    <p>Earlier logging remains archived separately; this graph shows readings collected by the new AWS history service. Simulation is never stored as real history.</p>
-  </section>
-  <h2>Sensors</h2>
-  <p>Unavailable and disabled sensors remain visible. Expand diagnostics to locate wiring and review failures.</p>
-  <div id="sensor-container"></div>
-  <section class="panel">
-    <h2>Relays &amp; schedules</h2>
-    <p>Relay toggles are momentary tests; the Pi enforces its schedule every minute. Sunrise/sunset synchronization replaces schedule times at startup and daily.</p>
+  <p id="connection" class="muted" role="status">Waiting for AWS state…</p>
+  <p id="message" role="status"></p>
+  <div class="section-head"><h2>Sensors</h2><span id="summary" class="muted"></span></div>
+  <div class="sensor-table">
+    <div class="sensor-columns" aria-hidden="true"><span>Sensor</span><span>Status</span><span>Temperature</span><span>Humidity</span><span>Pressure</span><span>Measured</span></div>
+    <div id="sensor-container"></div>
+  </div>
+  <p class="hint">Non-healthy readings are last known values. Expand diagnostics for wiring and errors. Disabled sensors remain listed.</p>
+  <details class="panel">
+    <summary>Relays &amp; schedules</summary>
+    <p class="hint">Relay toggles are momentary tests; the Pi enforces its schedule every minute. Sunrise/sunset synchronization replaces schedule times at startup and daily.</p>
     <div id="relay-container"></div>
-  </section>
-  <section class="panel">
-    <h2>Camera</h2>
+  </details>
+  <details class="panel">
+    <summary>Camera</summary>
     <button id="load-camera">Load live camera</button>
-    <p>The camera uses a separate connection. A camera outage does not block sensor status.</p>
+    <p class="hint">The camera uses a separate connection. A camera outage does not block sensor status.</p>
     <div id="camera"></div>
-  </section>
+  </details>
 </body>
 </html>

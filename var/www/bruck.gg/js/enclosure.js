@@ -52,19 +52,28 @@
       if (sensor.enabled && seconds != null && seconds > 30) status = "stale";
       counts[status] = (counts[status] || 0) + 1;
       const card = node("article", "", `sensor-box ${status}`);
-      card.append(node("h3", sensor.label), node("strong", status.toUpperCase()));
+      const line = node("div", "", "sensor-line");
+      line.append(node("h3", sensor.label), node("span", status.toUpperCase(), "sensor-status"));
       const reading = sensor.last_good_reading;
-      if (reading) {
-        const temperature = fahrenheit ? reading.temperature_c * 9 / 5 + 32 : reading.temperature_c;
-        card.append(node("p", `${status === "healthy" ? "" : "Last good: "}${temperature.toFixed(1)}°${fahrenheit ? "F" : "C"} · ${reading.humidity_pct.toFixed(1)}% RH`, "reading"));
-        card.append(node("p", `${reading.pressure_hpa.toFixed(1)} hPa · measured ${age(seconds)}`));
-      } else {
-        card.append(node("p", status === "disabled" ? "Not configured for collection" : "No successful measurement"));
+      const temperature = reading ? (fahrenheit ? reading.temperature_c * 9 / 5 + 32 : reading.temperature_c) : null;
+      for (const [label, value] of [
+        ["Temperature", reading ? `${temperature.toFixed(1)}°${fahrenheit ? "F" : "C"}` : "—"],
+        ["Humidity", reading ? `${reading.humidity_pct.toFixed(1)}%` : "—"],
+        ["Pressure", reading ? `${reading.pressure_hpa.toFixed(1)} hPa` : "—"]
+      ]) {
+        const cell = node("span", "", "reading");
+        cell.setAttribute("aria-label", `${label}: ${value}`);
+        cell.append(node("span", label, "mobile-label"), node("span", value));
+        if (status !== "healthy" && reading) cell.title = "Last known good reading; not a current healthy measurement";
+        line.append(cell);
       }
+      line.append(node("span", sensor.enabled ? age(seconds) : "Disabled", "updated muted"));
+      card.append(line);
       const details = document.createElement("details");
       details.dataset.sensor = sensor.sensor_id;
       details.open = expanded.has(sensor.sensor_id);
       details.append(node("summary", "Sensor diagnostics"));
+      const diagnostics = node("div", "", "diagnostics");
       const hw = sensor.hardware;
       for (const text of [
         `ID: ${sensor.sensor_id} · source: ${sensor.source}`,
@@ -74,8 +83,9 @@
         `Last attempt: ${stamp(sensor.last_attempt_at)}`,
         `Consecutive failures: ${sensor.consecutive_failures}`,
         `Error: ${sensor.error_code || "none"}`
-      ]) details.append(node("p", text));
+      ]) diagnostics.append(node("p", text));
       if (sensor.error_code) details.append(node("p", "Check this channel's wiring and power. Multiple affected channels may indicate a shared bus or multiplexer issue."));
+      details.append(diagnostics);
       card.append(details);
       holder.append(card);
     }
@@ -140,12 +150,37 @@
   function render() {
     $("simulation-banner").hidden = source() !== "simulation";
     $("scenario-label").hidden = source() !== "simulation";
-    const connected = snapshot?.connection.status === "connected";
-    const collector = snapshot?.snapshot.collector.status || "unknown";
-    $("connection").textContent = !apiHealthy ? "AWS state unavailable — retained readings may be old." :
-      source() === "simulation" ? `SIMULATION · ${scenario()} · connection ${connected ? "available" : "unavailable"}` :
-      `Pi connection: ${connected ? "connected" : "unavailable"} · sensor collector: ${collector}`;
-    $("load-camera").disabled = source() !== "hardware" || !apiHealthy || !snapshot?.live_available;
+    const elapsed = (performance.now() - receivedAt) / 1000;
+    const fresh = apiHealthy && elapsed < 15;
+    const simulated = source() === "simulation";
+    const connected = fresh && snapshot?.connection.status === "connected";
+    const collector = snapshot?.snapshot.collector;
+    const clock = snapshot?.snapshot.generated_at;
+    const since = value => value == null || clock == null ? null : Math.max(0, clock - value + elapsed);
+    const health = (id, state, label, detail) => {
+      $(`${id}-card`).dataset.state = state;
+      $(`${id}-status`).textContent = label;
+      $(`${id}-detail`).textContent = detail;
+    };
+    health("aws", fresh ? "good" : failures ? "bad" : "unknown", fresh ? "Online" : failures ? "Unreachable" : snapshot ? "Stale" : "Checking",
+      snapshot ? `Last response ${age(elapsed)} · browser → AWS API` : "Waiting for the AWS state endpoint");
+    health("pi", simulated ? "unknown" : !fresh ? "unknown" : connected ? "good" : "bad",
+      simulated ? "Simulated" : !fresh ? "Unknown" : connected ? "Connected" : "Unreachable",
+      simulated ? "Simulation does not check the real Pi" : !fresh ? "Cannot verify without fresh AWS state" : `AWS → Pi sensor API · last success ${age(since(snapshot.connection.last_success_at))}`);
+    const collectorAge = since(collector?.last_progress_at);
+    const running = collector?.status === "running" && collectorAge != null && collectorAge <= 45;
+    health("collector", simulated || !connected ? "unknown" : running ? "good" : "warn",
+      simulated ? "Simulated" : !connected ? "Unknown" : running ? "Running" : collector?.status === "running" ? "Stalled" : collector?.status || "Unknown",
+      simulated ? `Scenario: ${scenario()}` : !connected ? "Requires a fresh Pi connection" : `Last progress ${age(collectorAge)}`);
+    const history = snapshot?.history;
+    const recording = history?.status === "recording" && since(history.last_write_at) != null && since(history.last_write_at) <= 45;
+    health("history", !fresh ? "unknown" : recording ? "good" : "warn",
+      !fresh ? "Unknown" : recording ? "Recording" : history?.status === "recording" ? "Delayed" : (history?.status || "unknown").replaceAll("_", " "),
+      !fresh ? "Requires fresh AWS state" : `Last write ${age(since(history?.last_write_at))} · ${history?.eligible_sensors ?? 0} eligible sensors`);
+    $("connection").textContent = !fresh ? "AWS state unavailable or stale — retained readings may be old; Pi status cannot be verified." :
+      simulated ? "SIMULATION · Pi and collector indicators are synthetic. AWS API and history status remain live." :
+      `AWS API ${fresh ? "online" : "unavailable"} · Pi ${connected ? "connected" : "unreachable"} · readings refresh automatically`;
+    $("load-camera").disabled = source() !== "hardware" || !fresh || !snapshot?.live_available;
     renderSensors();
     renderRelays();
   }
