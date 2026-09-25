@@ -1,2 +1,10 @@
 <!doctype html>
-<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="theme-color" content="#f0f7fd" /><title>Smart Enclosure</title></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>
+<html lang="en"><head><meta charset="UTF-8" /><meta name="viewport" content="width=device-width, initial-scale=1" /><meta name="theme-color" content="#f0f7fd" /><title>Smart Enclosure</title><script>
+  // Apply the saved appearance before styles load to avoid a light flash.
+  try {
+    if (localStorage.getItem('enclosure-theme') === 'dark') {
+      document.documentElement.dataset.theme = 'dark';
+      document.querySelector('meta[name="theme-color"]').content = '#0e1926';
+    }
+  } catch { /* Light remains the default when storage is unavailable. */ }
+</script></head><body><div id="root"></div><script type="module" src="/src/main.jsx"></script></body></html>

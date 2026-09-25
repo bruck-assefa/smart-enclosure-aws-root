@@ -5,8 +5,15 @@ import { api, serverNow, dateKey } from './ui/data';
 import useFeeding from './ui/useFeeding';
 import './ui/styles.css';
 import './ui/light.css';
+import './ui/theme.css';
 
 export default function App() {
+  const [theme, setTheme] = useState(() => document.documentElement.dataset.theme === 'dark' ? 'dark' : 'light');
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    document.querySelector('meta[name="theme-color"]').content = theme === 'dark' ? '#0e1926' : '#f0f7fd';
+    try { localStorage.setItem('enclosure-theme', theme); } catch { /* Preference storage is optional. */ }
+  }, [theme]);
   const [page, setPage] = useState(location.hash === '#settings' ? 'settings' : 'overview');
   const [unit, setUnit] = useState(() => { try { return localStorage.getItem('enclosure-unit') === 'C' ? 'C' : 'F'; } catch { return 'F'; } });
   const [state, setState] = useState(null), [received, setReceived] = useState(0), [error, setError] = useState('');
@@ -23,7 +30,7 @@ export default function App() {
   const fresh = !error && now - received <= 15;
   const feeding = useFeeding(dateKey(new Date(serverNow(state, received, now) * 1000)));
   function chooseUnit(u) { setUnit(u); try { localStorage.setItem('enclosure-unit', u); } catch { /* Preference storage is optional. */ } }
-  return <div className="app"><header className="topbar"><a href="#overview" className="brand"><span className="brand-mark" aria-hidden="true">↟</span>Smart Enclosure</a><nav aria-label="Main navigation"><a href="#overview" aria-current={page === 'overview' ? 'page' : undefined}>Overview</a><a href="#settings" aria-current={page === 'settings' ? 'page' : undefined}>Settings</a><a href="/debug.html">Debug ↗</a></nav><div className="segmented units" aria-label="Temperature unit">{['F', 'C'].map(u => <button key={u} aria-pressed={unit === u} onClick={() => chooseUnit(u)}>°{u}</button>)}</div></header>
+  return <div className="app"><header className="topbar"><a href="#overview" className="brand"><span className="brand-mark" aria-hidden="true">↟</span>Smart Enclosure</a><nav aria-label="Main navigation"><a href="#overview" aria-current={page === 'overview' ? 'page' : undefined}>Overview</a><a href="#settings" aria-current={page === 'settings' ? 'page' : undefined}>Settings</a><a href="/debug.html">Debug ↗</a></nav><div className="header-controls"><button className="theme-toggle" aria-label="Dark mode" aria-pressed={theme === 'dark'} title={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'} onClick={() => setTheme(theme === 'dark' ? 'light' : 'dark')}><span aria-hidden="true">{theme === 'dark' ? '☾' : '☀'}</span><span>{theme === 'dark' ? 'Dark' : 'Light'}</span></button><div className="segmented units" aria-label="Temperature unit">{['F', 'C'].map(u => <button key={u} aria-pressed={unit === u} onClick={() => chooseUnit(u)}>°{u}</button>)}</div></div></header>
     <main><div className="connection"><span className={`status-dot ${fresh && state?.connection?.status === 'connected' ? 'connected' : ''}`} />{error || (!state ? 'Connecting to enclosure…' : fresh && state.connection.status === 'connected' ? 'Connected to enclosure' : 'Enclosure data unavailable or stale')}<span className="connection-time">America/New_York</span></div>
       {page === 'settings' ? <Settings state={state} enabled={fresh && state?.controls_enabled} refresh={refresh} feeding={feeding} /> : <Dashboard state={state} rows={rows} unit={unit} now={serverNow(state, received, now)} fresh={fresh} zonesError={zonesError} feeding={feeding} />}
       <footer><span>Smart Enclosure</span><span>{state?.history?.status === 'recording' ? 'History recording' : `History: ${(state?.history?.status || 'connecting').replaceAll('_', ' ')}`}</span></footer>

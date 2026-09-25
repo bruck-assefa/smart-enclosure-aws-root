@@ -1,0 +1,62 @@
+/* Light remains the default; dark uses the same layout and blue accents. */
+.header-controls { display: flex; align-items: center; gap: 12px; }
+.theme-toggle { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-width: 84px; font-size: 13px; }
+.theme-toggle > span:first-child { font-size: 19px; line-height: 1; }
+textarea:focus-visible { outline: 3px solid #4a91c6; outline-offset: 3px; }
+:root[data-theme=dark] {
+  color-scheme: dark;
+  color: #e0eaf5;
+  background: #0e1926;
+  --surface: #172638;
+  --muted: #a9bdd0;
+  --line: #334a60;
+  --hot: #f5a381;
+  --mid: #e0c566;
+  --cold: #79caee;
+}
+[data-theme=dark] body { background: #0e1926; }
+[data-theme=dark] .topbar { background: #142233; }
+[data-theme=dark] .settings-context,
+[data-theme=dark] .feeding-day { background: var(--surface); }
+[data-theme=dark] .topbar nav a[aria-current],
+[data-theme=dark] .topbar nav a:hover { background: #243f58; color: #c3e4ff; }
+[data-theme=dark] button:hover:not(:disabled) { border-color: #8fc4ed; background: #29435b; }
+[data-theme=dark] .primary,
+[data-theme=dark] .segmented button[aria-pressed=true],
+[data-theme=dark] .weekday-picker button[aria-pressed=true] { background: #95cff8; color: #10263a; border-color: #95cff8; }
+[data-theme=dark] .primary:hover:not(:disabled) { background: #b7dfff; color: #10263a; }
+[data-theme=dark] :is(button,a,input,select,textarea):focus-visible { outline-color: #95cff8; }
+[data-theme=dark] .badge { background: #243f58; color: #bddfff; }
+[data-theme=dark] .camera-screen { background: #101e2d; }
+[data-theme=dark] .camera-symbol { color: #95bddc; }
+[data-theme=dark] .day-track { background: #334a60; }
+[data-theme=dark] .day-fill { background: #78b3df; }
+[data-theme=dark] .now-marker { background: #e0eaf5; }
+[data-theme=dark] .timeline-labels span:nth-child(2),
+[data-theme=dark] .chart-detail strong,
+[data-theme=dark] .feeding-next strong { color: #e0eaf5; }
+[data-theme=dark] .cursor { stroke: #abcbe5; }
+[data-theme=dark] input,
+[data-theme=dark] select,
+[data-theme=dark] .event-form textarea { background: #101e2d; border-color: #47617a; color: #e0eaf5; }
+[data-theme=dark] input::placeholder,
+[data-theme=dark] textarea::placeholder { color: #a9bdd0; }
+[data-theme=dark] input { accent-color: #95cff8; }
+[data-theme=dark] .warning,
+[data-theme=dark] .zone-foot.warning { color: #f0c47e; }
+[data-theme=dark] .notice { background: #3a3021; color: #f4d49f; }
+[data-theme=dark] .status-dot { background: #f0c47e; }
+[data-theme=dark] .status-dot.connected { background: #8bcba3; }
+[data-theme=dark] .food-tag.salad { background: #244335; color: #a8dfb9; }
+[data-theme=dark] .food-tag.bugs { background: #443523; color: #f4cd94; }
+[data-theme=dark] .feeding-settings-link { color: #95cff8; }
+[data-theme=dark] .event-list .event-selected { background: #243f58; border-color: #95cff8; }
+[data-theme=dark] .event-marker { color: #c0ade4; }
+[data-theme=dark] .event-marker.feeding { color: #8bcba3; }
+[data-theme=dark] .event-marker.cleaning { color: #79caee; }
+[data-theme=dark] .event-marker.bulb_change { color: #f0c47e; }
+[data-theme=dark] .event-marker circle { stroke: #172638; }
+[data-theme=dark] .event-marker:focus circle,
+[data-theme=dark] .event-marker.active circle { stroke: #e0eaf5; }
+@media (max-width: 1050px) { .topbar { flex-wrap: wrap; gap: 12px; } .topbar nav { order: 3; width: 100%; margin: 0; } .header-controls { margin-left: auto; } }
+@media (max-width: 550px) { .header-controls { gap: 6px; } .theme-toggle { min-width: 42px; padding: 7px 9px; } .theme-toggle > span:last-child { display: none; } }
