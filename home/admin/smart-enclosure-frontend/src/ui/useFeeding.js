@@ -1,3 +1,4 @@
+import { timing } from '../timing.js';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { api } from './data';
 
@@ -22,10 +23,10 @@ export default function useFeeding(day) {
   useEffect(() => {
     active.current = true;
     const load = () => { if (!document.hidden) refresh(); };
-    load(); const timer = setInterval(load, 30000);
+    load(); const timer = setInterval(load, timing.browser_feeding_poll_interval * 1000);
     document.addEventListener('visibilitychange', load);
     return () => { active.current = false; clearInterval(timer); document.removeEventListener('visibilitychange', load); };
   }, [refresh, day]);
   return { data, error, refresh, accept,
-    fresh: !!data && !error && Date.now() - received < 90000 && data.date === day };
+    fresh: !!data && !error && Date.now() - received < timing.browser_feeding_stale_after * 1000 && data.date === day };
 }

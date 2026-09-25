@@ -1,4 +1,5 @@
 """Current-state gateway with independent, optional AWS historical storage."""
+import timing_config as timing
 import asyncio
 import copy
 import json
@@ -18,7 +19,7 @@ from feeding import Feeding, Conflict, validate as validate_feeding, validate_co
 from sensor_contract import new_snapshot, aged, validate_snapshot
 from sensor_simulator import simulate, SCENARIOS
 
-REQUEST_TIMEOUT = 2.5
+REQUEST_TIMEOUT = timing.PI_REQUEST_TIMEOUT
 MAX_BODY = 128 * 1024
 log = logging.getLogger(__name__)
 
@@ -106,7 +107,9 @@ class Gateway:
         while True:
             self.wake.clear()
             await self.refresh()
-            delay = min(60, 5 * 2 ** min(self.failures, 4))
+            max_doublings = math.ceil(math.log2(timing.GATEWAY_RETRY_MAX / timing.GATEWAY_POLL_INTERVAL))
+            delay = min(timing.GATEWAY_RETRY_MAX,
+                        timing.GATEWAY_POLL_INTERVAL * 2 ** min(self.failures, max_doublings))
             try:
                 await asyncio.wait_for(self.wake.wait(), delay)
             except asyncio.TimeoutError:
@@ -136,7 +139,7 @@ class Gateway:
         parts = copy.deepcopy(self.parts)
         now = time.time()
         for part in parts.values():
-            if part["last_success_at"] is None or now - part["last_success_at"] > 15:
+            if part["last_success_at"] is None or now - part["last_success_at"] > timing.GATEWAY_STALE_AFTER:
                 part["error"] = part["error"] or "cache_stale"
         connected = parts["sensors"]["error"] is None
         return {"source": source, "snapshot": snapshot,

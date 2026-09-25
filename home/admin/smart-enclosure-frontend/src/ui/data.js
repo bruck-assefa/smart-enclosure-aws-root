@@ -1,3 +1,4 @@
+import { timing } from '../timing.js';
 export const TIMEZONE = 'America/New_York';
 // Compare hardware timestamps with server time, not the browser's wall clock.
 export const serverNow = (state, received, clientNow) => Number.isFinite(state?.snapshot?.generated_at)
@@ -23,7 +24,7 @@ export function liveZones(state, rows, now) {
   const connected = state?.connection?.status === 'connected' && state?.snapshot?.collector?.status === 'running';
   return ZONES.map(zone => {
     const configured = sensors.filter(s => s.enabled && map[s.sensor_id] === zone);
-    const valid = configured.filter(s => connected && s.status === 'healthy' && now - s.last_success_at <= 30 && now >= s.last_success_at && Number.isFinite(s.last_good_reading?.temperature_c));
+    const valid = configured.filter(s => connected && s.status === 'healthy' && now - s.last_success_at <= timing.sensor_stale_after && now >= s.last_success_at && Number.isFinite(s.last_good_reading?.temperature_c));
     return { zone, total: configured.length, count: valid.length,
       value: valid.length ? valid.reduce((sum, s) => sum + s.last_good_reading.temperature_c, 0) / valid.length : null,
       age: valid.length ? Math.max(...valid.map(s => Math.floor(now - s.last_success_at))) : null };
@@ -43,7 +44,7 @@ export function zoneHistory(series, map, field = 'temperature_c') {
   return ZONES.map(zone => ({ zone, points: [...groups[zone].values()].sort((a, b) => a.time - b.time).map(b => ({ time: b.time, value: b.sum / b.count, count: b.count })) }));
 }
 export async function api(path, options = {}) {
-  const response = await fetch(`/enclosure${path}`, { cache: 'no-store', ...options, signal: options.signal || AbortSignal.timeout(7000) });
+  const response = await fetch(`/enclosure${path}`, { cache: 'no-store', ...options, signal: options.signal || AbortSignal.timeout(timing.browser_request_timeout * 1000) });
   const data = await response.json();
   if (!response.ok) throw new Error(typeof data.detail === 'string' ? data.detail : `Request failed (${response.status})`);
   return data;

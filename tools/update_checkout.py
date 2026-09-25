@@ -39,7 +39,7 @@ def allowed(name, profile):
     if name in common or name.startswith(("tools/", "tests/", "docs/")):
         return True
     if profile == "pi":
-        return name in {"main.py", "sensor_collector.py", "sensor_worker.py",
+        return name in {"main.py", "sensor_collector.py", "sensor_worker.py", "timing_config.py",
                         "sensor_contract.py", "sensor_simulator.py", "beardapi.service",
                         "docker-compose.yml", "mediamtx.yml"}
     if name.startswith('home/admin/smart-enclosure-frontend/'):

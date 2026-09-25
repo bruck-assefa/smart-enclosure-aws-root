@@ -1,3 +1,4 @@
+import { timing } from '../timing.js';
 import { useEffect, useState } from 'react';
 import { api, clock, dateKey } from './data';
 import { FeedingSettings } from './Feeding';
@@ -12,7 +13,7 @@ function RelayForm({ relay, enabled, refresh }) {
   }, [relay, dirty, busy, pending]);
   useEffect(() => {
     if (!pending) return;
-    const timer = setTimeout(() => { setPending(null); setDirty(true); setMessage('Saved response received, but current settings could not be confirmed. Check the overview before saving again.'); }, 20000);
+    const timer = setTimeout(() => { setPending(null); setDirty(true); setMessage('Saved response received, but current settings could not be confirmed. Check the overview before saving again.'); }, timing.browser_schedule_confirmation_timeout * 1000);
     return () => clearTimeout(timer);
   }, [pending]);
   function change(key, value) { setDraft(d => ({ ...d, [key]: value })); setDirty(true); setMessage('Unsaved changes'); }

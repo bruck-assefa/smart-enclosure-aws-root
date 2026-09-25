@@ -1,3 +1,4 @@
+import { timing } from '../timing.js';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import Events from './Events';
 import useEvents from './useEvents';
@@ -31,13 +32,13 @@ export default function History({ unit, state, rows, now }) {
       const current = today;
       const start = range.mode === 'live' ? shiftDay(current, -1) : range.mode === 'today' ? current : range.start;
       const end = ['live', 'today'].includes(range.mode) ? current : range.end;
-      const deadline = setTimeout(() => controller.abort(), 8000);
+      const deadline = setTimeout(() => controller.abort(), timing.browser_history_request_timeout * 1000);
       try { const result = await api(`/history/range?start=${start}&end=${end}`, { signal: controller.signal }); if (active) { setData(result); setError(''); } }
       catch (e) { if (active) setError(e.name === 'AbortError' ? 'History request timed out. Try another range.' : e.message); }
       finally { clearTimeout(deadline); inFlight = false; if (active) setLoading(false); }
     }
     setLoading(true); setData(null); setCursor(null); load();
-    const timer = setInterval(load, 60000);
+    const timer = setInterval(load, timing.browser_history_poll_interval * 1000);
     document.addEventListener('visibilitychange', load);
     return () => { active = false; controller?.abort(); clearInterval(timer); document.removeEventListener('visibilitychange', load); };
   }, [range, today]);

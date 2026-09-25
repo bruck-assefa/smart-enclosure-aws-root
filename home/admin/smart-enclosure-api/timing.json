@@ -1,0 +1,109 @@
+{
+  "description": "Authoritative timing settings. All values are seconds. Run python3 tools/sync_timing.py after editing; see docs/TIMING.md.",
+  "settings": {
+    "sensor_read_interval": {
+      "seconds": 5,
+      "description": "Pi: wait after each sensor read before reading that sensor again."
+    },
+    "sensor_read_timeout": {
+      "seconds": 3,
+      "description": "Pi: maximum wait for one hardware read."
+    },
+    "sensor_retry_max": {
+      "seconds": 60,
+      "description": "Pi: maximum per-sensor exponential retry delay."
+    },
+    "sensor_worker_poll": {
+      "seconds": 0.02,
+      "description": "Pi: poll the sensor worker and process exit status."
+    },
+    "sensor_worker_stop_timeout": {
+      "seconds": 0.5,
+      "description": "Pi: wait after terminate, then after kill."
+    },
+    "sensor_blocked_retry": {
+      "seconds": 5,
+      "description": "Pi: retry cleanup when a hardware worker cannot exit."
+    },
+    "sensor_loop_pause": {
+      "seconds": 0.1,
+      "description": "Pi: pause between scans of due sensors."
+    },
+    "gateway_poll_interval": {
+      "seconds": 5,
+      "description": "AWS: wait between completed Pi refreshes."
+    },
+    "gateway_retry_max": {
+      "seconds": 60,
+      "description": "AWS: maximum exponential retry delay after refresh failures."
+    },
+    "pi_request_timeout": {
+      "seconds": 2.5,
+      "description": "AWS: total deadline for each Pi read or control request."
+    },
+    "relay_schedule_check_interval": {
+      "seconds": 60,
+      "description": "Pi: evaluate relay schedules at this interval; also checked at startup."
+    },
+    "sensor_stale_after": {
+      "seconds": 30,
+      "description": "All components: maximum healthy sensor reading age."
+    },
+    "gateway_stale_after": {
+      "seconds": 15,
+      "description": "AWS: maximum age of cached Pi state."
+    },
+    "browser_state_poll_interval": {
+      "seconds": 5,
+      "description": "Browser: fetch current AWS state while visible."
+    },
+    "browser_clock_interval": {
+      "seconds": 1,
+      "description": "Browser: update displayed clock and freshness status."
+    },
+    "browser_state_stale_after": {
+      "seconds": 15,
+      "description": "Browser: maximum age since a successful state fetch."
+    },
+    "browser_zones_poll_interval": {
+      "seconds": 60,
+      "description": "Browser: refresh sensor zone assignments."
+    },
+    "browser_schedule_confirmation_timeout": {
+      "seconds": 20,
+      "description": "Browser: deadline to confirm saved settings through refreshed state."
+    },
+    "browser_request_timeout": {
+      "seconds": 7,
+      "description": "Browser: default API request deadline."
+    },
+    "browser_history_poll_interval": {
+      "seconds": 60,
+      "description": "Browser: refresh historical chart data."
+    },
+    "browser_history_request_timeout": {
+      "seconds": 8,
+      "description": "Browser: historical chart request deadline."
+    },
+    "browser_events_poll_interval": {
+      "seconds": 60,
+      "description": "Browser: refresh event history while visible."
+    },
+    "browser_events_request_timeout": {
+      "seconds": 8,
+      "description": "Browser: event history request deadline."
+    },
+    "browser_feeding_poll_interval": {
+      "seconds": 30,
+      "description": "Browser: refresh feeding settings while visible."
+    },
+    "browser_feeding_stale_after": {
+      "seconds": 90,
+      "description": "Browser: maximum age of feeding settings."
+    },
+    "history_sample_interval": {
+      "seconds": 10,
+      "description": "AWS: sample cached readings for historical storage."
+    }
+  }
+}

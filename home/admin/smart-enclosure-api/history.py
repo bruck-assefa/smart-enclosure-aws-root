@@ -1,4 +1,5 @@
 """Bounded AWS-only history. Database errors never enter the live-state path."""
+import timing_config as timing
 import asyncio
 import logging
 import os
@@ -9,7 +10,7 @@ from zoneinfo import ZoneInfo
 log = logging.getLogger(__name__)
 UTC = timezone.utc
 ZONE = ZoneInfo("America/New_York")
-INTERVAL = 10
+INTERVAL = timing.HISTORY_SAMPLE_INTERVAL
 BUCKET = 60
 
 
@@ -31,7 +32,7 @@ def samples(state, now):
     for s in state["snapshot"]["sensors"]:
         stamp = s["last_success_at"]
         if (s["source"] != "hardware" or not s["enabled"] or s["status"] != "healthy"
-                or stamp is None or not 0 <= now - stamp <= 30):
+                or stamp is None or not 0 <= now - stamp <= timing.SENSOR_STALE_AFTER):
             continue
         r, hw = s["last_good_reading"], s["hardware"]
         rows.append((datetime.fromtimestamp(stamp, UTC), s["sensor_id"],
