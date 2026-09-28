@@ -15,7 +15,7 @@ const dist = path.resolve(__dirname, '../home/admin/smart-enclosure-frontend/dis
   if(p.startsWith('/smart/')) {const file=path.join(dist,p==='/smart/'?'index.html':p.slice(7));return route.fulfill({path:file,contentType:file.endsWith('.js')?'text/javascript':file.endsWith('.css')?'text/css':'text/html'});}
   const json=body=>route.fulfill({json:body});
   if(p==='/enclosure/feeding') return json(data);
-  if(p==='/enclosure/feeding/complete') {assert.deepEqual(req.postDataJSON(),{food:'bugs',version:0,date});data={...data,version:1,today:[],history:[{food:'bugs',scheduled_date:'2026-01-01',completed_date:date}]};return json(data);}
+  if(p==='/enclosure/feeding/complete') {assert.deepEqual(req.postDataJSON(),{food:'bugs',version:0,date});data={...data,version:1,today:[],history:[{food:'bugs',scheduled_date:'2026-01-01',completed_date:date,completed_at:'2026-09-25T00:35:00Z'}]};return json(data);}
   if(p==='/enclosure/state') return json({snapshot:{generated_at:now,sensors:[]},connection:{status:'disconnected'},history:{status:'recording'}});
   if(p==='/enclosure/zones') return json({zones:[]});
   if(p==='/enclosure/events') return json({events:[],start:now-86400,end:now});
@@ -31,6 +31,7 @@ const dist = path.resolve(__dirname, '../home/admin/smart-enclosure-frontend/dis
  await page.locator('.feeding-settings-link').click();
  await page.locator('.feeding-history tbody tr').waitFor();
  assert.equal(await page.locator('.feeding-history tbody tr').count(),1);
+ await page.locator('.feeding-history').getByText('8:35 PM EDT', {exact:true}).waitFor();
  assert.equal(await page.evaluate(()=>document.documentElement.scrollWidth>innerWidth),false);
  assert.deepEqual(errors,[]);
  console.log('PASS: mobile confirmation, reload persistence, history, enclosure date with Tokyo browser timezone.');

@@ -8,6 +8,14 @@ const DAYS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
 function formatDay(value) {
   return new Intl.DateTimeFormat('en-US', { timeZone: 'UTC', weekday: 'short', month: 'short', day: 'numeric' }).format(new Date(`${value}T12:00:00Z`));
 }
+function formatLoggedTime(value) {
+  if (!value) return 'Time unavailable';
+  const instant = new Date(value);
+  if (Number.isNaN(instant.getTime())) return 'Time unavailable';
+  return new Intl.DateTimeFormat('en-US', {
+    timeZone: 'America/New_York', hour: 'numeric', minute: '2-digit', timeZoneName: 'short',
+  }).format(instant);
+}
 function FoodTag({ food }) {
   return <span className={`food-tag ${food}`}><span aria-hidden="true">{food === 'salad' ? '🥬' : '🦗'}</span>{NAMES[food]}</span>;
 }
@@ -96,6 +104,6 @@ export function FeedingSettings({ feeding }) {
       <div className="feeding-save"><button type="submit" className="primary" disabled={!fresh || !dirty || busy}>{busy ? 'Working…' : 'Save feeding schedule'}</button><button type="button" disabled={busy} onClick={reload}>Reload saved plan</button><p role="status">{message || 'Schedules use America/New_York calendar days.'}</p></div>
     </form>}
     {fresh && data && FOODS.some(food => data.schedules[food].enabled) && <div className="feeding-week"><h3>Saved routine · next 7 days</h3><div className="feeding-week-grid">{data.upcoming.map((day, i) => <div key={day.date} className="feeding-day"><strong>{i === 0 ? 'Today' : formatDay(day.date).split(',')[0]}</strong><span className="muted small">{formatDay(day.date).split(',').slice(1).join(',').trim()}</span><div>{day.foods.length ? day.foods.map(food => <FoodTag key={food} food={food} />) : <span className="muted small">No feeding</span>}</div></div>)}</div></div>}
-    {fresh && data && <section className="feeding-history" aria-labelledby="feeding-history-title"><h3 id="feeding-history-title">Feeding history</h3><p className="muted small">Latest 100 confirmations · enclosure time. Missed feedings of the same food combine into one outstanding feeding; future dates follow the saved routine.</p>{data.history?.length ? <div className="feeding-history-scroll"><table><thead><tr><th>Food</th><th>Scheduled</th><th>Completed</th></tr></thead><tbody>{data.history.map(item => <tr key={`${item.food}-${item.completed_date}`}><td><FoodTag food={item.food} /></td><td>{item.scheduled_date}</td><td>{item.completed_date}</td></tr>)}</tbody></table></div> : <p className="muted">No feedings confirmed yet.</p>}</section>}
+    {fresh && data && <section className="feeding-history" aria-labelledby="feeding-history-title"><h3 id="feeding-history-title">Feeding history</h3><p className="muted small">Latest 100 confirmations · enclosure time. Missed feedings of the same food combine into one outstanding feeding; future dates follow the saved routine.</p>{data.history?.length ? <div className="feeding-history-scroll"><table><thead><tr><th>Food</th><th>Scheduled</th><th>Completed</th></tr></thead><tbody>{data.history.map(item => <tr key={`${item.food}-${item.completed_date}`}><td><FoodTag food={item.food} /></td><td>{item.scheduled_date}</td><td>{item.completed_date}<br /><span className="muted small">{formatLoggedTime(item.completed_at)}</span></td></tr>)}</tbody></table></div> : <p className="muted">No feedings confirmed yet.</p>}</section>}
   </section>;
 }
