@@ -21,6 +21,7 @@ REQUIRED_KEYS = frozenset({
     'gateway_retry_max',
     'pi_request_timeout',
     'relay_schedule_check_interval',
+    'relay_switch_delay',
     'sensor_stale_after',
     'gateway_stale_after',
     'browser_state_poll_interval',
@@ -47,8 +48,9 @@ def validate(document):
         value = entry['seconds']
         if not key.isidentifier() or not key.islower():
             raise ValueError(f'Invalid setting name: {key}')
-        if type(value) not in (int, float) or not math.isfinite(value) or not .001 <= value <= 86400:
-            raise ValueError(f'{key}: seconds must be a finite number from 0.001 to 86400')
+        minimum, maximum = (0, 10) if key == 'relay_switch_delay' else (.001, 86400)
+        if type(value) not in (int, float) or not math.isfinite(value) or not minimum <= value <= maximum:
+            raise ValueError(f'{key}: seconds must be a finite number from {minimum} to {maximum}')
         if not isinstance(entry['description'], str) or not entry['description'].strip():
             raise ValueError(f'{key}: description is required')
         values[key] = value
@@ -64,6 +66,9 @@ def validate(document):
     ):
         if values[interval] >= values[limit]:
             raise ValueError(f'{limit} must exceed {interval}')
+    # Four relays require up to three gaps in one check.
+    if 3 * values['relay_switch_delay'] >= values['relay_schedule_check_interval']:
+        raise ValueError('Three relay switch delays must fit within the schedule check interval')
     return values
 
 

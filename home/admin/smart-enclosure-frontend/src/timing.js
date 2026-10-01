@@ -11,6 +11,7 @@ export const timing = Object.freeze({
   "gateway_retry_max": 60,
   "pi_request_timeout": 2.5,
   "relay_schedule_check_interval": 60,
+  "relay_switch_delay": 1,
   "sensor_stale_after": 30,
   "gateway_stale_after": 15,
   "browser_state_poll_interval": 5,

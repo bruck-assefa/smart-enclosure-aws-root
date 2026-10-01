@@ -2,8 +2,9 @@
 
 Edit **home/admin/smart-enclosure-api/timing.json** in the AWS repository.
 Every setting has a descriptive name, a `seconds` value and an explanation.
-Fractional seconds are supported. The initial values preserve existing intervals
-and deadlines. Retry delays double on failures up to the configured maximum.
+Fractional seconds are supported. Existing intervals and deadlines retain their
+initial values. The scheduled relay switch delay defaults to 1 second. Retry
+delays double on failures up to the configured maximum.
 
 From the AWS repository, run:
 
@@ -14,7 +15,8 @@ python3 tools/sync_timing.py --check
 
 The Pi repository defaults to the sibling `../backend` directory. Use
 `--backend /path/to/backend` with either command if it is elsewhere.
-The command validates positive finite durations and key polling/freshness
+The command validates finite durations (positive except the optional relay switch
+delay, which also accepts zero) and key polling/freshness
 relationships, then generates:
 
 - AWS API `timing_config.py`
@@ -40,7 +42,26 @@ readback, not a delay before writing. The Pi request timeout bounds both reads
 and writes; a timeout leaves the command outcome uncertain. The relay schedule
 check now uses an interval timer (60 seconds by default), measured from service
 startup rather than the wall-clock minute boundary. Startup still checks schedules
-immediately; saving still waits for the next scheduled check to change outputs.
+immediately. Saving an active schedule waits for the next scheduled check to
+change outputs; saving Keep off commands that output off immediately.
+
+`relay_switch_delay` sets the minimum gap between actual scheduled relay changes,
+for both ON and OFF transitions. The default is **1 second**; `0` disables
+staggering. Fractional values are supported, up to 10 seconds. With all four
+relays due, they switch in order 1, 2, 3, 4 at approximately 0, 1, 2, 3 seconds.
+Relays already in the desired state are skipped. Three gaps must fit within
+`relay_schedule_check_interval`; generation rejects conflicting settings.
+
+The Pi waits asynchronously, allowing sensor collection and HTTP requests to
+continue. It rereads the schedule, current time, and physical relay state after
+each wait. Checks cannot overlap, and shutdown cancels pending waits before GPIO
+cleanup. Manual test commands remain immediate. Startup schedule restoration
+also staggers, so startup may take up to three gaps longer. GPIO initialization
+and shutdown cleanup retain their existing behavior; this setting only governs
+scheduled transitions. Activate this behavior by deploying the Pi changes,
+including `relay_scheduler.py` and regenerated `timing_config.py`, and restarting
+beardapi. Verify physical transition spacing on the Pi during an authorized
+runtime check; local tests use fake relay callbacks, never GPIO.
 
 This file covers live sensor collection, gateway polling/retries, relay schedule
 checks, dashboard polling/confirmation/request deadlines, freshness thresholds,

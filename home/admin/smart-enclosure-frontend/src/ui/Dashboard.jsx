@@ -24,7 +24,7 @@ function Daylight({ state, now, fresh }) {
       {valid && <span className="day-fill" style={{ left: `${position(sun.sunrise)}%`, width: `${position(sun.sunset) - position(sun.sunrise)}%` }} />}<span className="now-marker" style={{ left: `${percent}%` }} />
     </div><div className="timeline-labels"><span>12 AM</span><span>Now · {clock(now)}</span><span>12 AM</span></div>
     <p className="cycle-note">{valid ? day ? `Sun-cycle relays turn off at ${clock(sun.sunset)}` : now < sun.sunrise ? `Sun-cycle relays turn on at ${clock(sun.sunrise)}` : 'Daylight ended · next cycle begins tomorrow' : 'Waiting for today’s solar times'}</p>
-    <div className="relay-list">{schedules.map(r => <div className="relay-row" key={r.relay_id}><div><strong>{r.name || `Relay ${r.relay_id}`}</strong><span>{r.mode === 'custom' ? 'Custom' : 'Sun cycle'} · {r.on_time}–{r.off_time}{r.off_time < r.on_time ? ' (+1 day)' : ''}</span></div><span className="relay-state">{fresh && !state?.relays?.error ? state?.relays?.data?.[r.relay_id]?.toUpperCase() || 'UNKNOWN' : 'UNKNOWN'}</span></div>)}</div>
+    <div className="relay-list">{schedules.map(r => <div className="relay-row" key={r.relay_id}><div><strong>{r.name || `Relay ${r.relay_id}`}</strong><span>{r.mode === 'off' ? 'Keep off · schedule disabled' : <>{r.mode === 'custom' ? 'Custom' : 'Sun cycle'} · {r.on_time}–{r.off_time}{r.off_time < r.on_time ? ' (+1 day)' : ''}</>}</span></div><span className="relay-state">{fresh && !state?.relays?.error ? state?.relays?.data?.[r.relay_id]?.toUpperCase() || 'UNKNOWN' : 'UNKNOWN'}</span></div>)}</div>
   </section>;
 }
 

@@ -45,6 +45,10 @@
       "seconds": 60,
       "description": "Pi: evaluate relay schedules at this interval; also checked at startup."
     },
+    "relay_switch_delay": {
+      "seconds": 1,
+      "description": "Pi: minimum gap between scheduled relay ON/OFF changes, in relay order 1–4. Includes startup schedule restoration. 0 disables staggering; maximum 10 seconds. Manual tests remain immediate."
+    },
     "sensor_stale_after": {
       "seconds": 30,
       "description": "All components: maximum healthy sensor reading age."

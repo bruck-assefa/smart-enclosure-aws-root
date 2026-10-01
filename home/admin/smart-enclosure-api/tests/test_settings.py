@@ -9,6 +9,12 @@ class SettingsTests(ControlTests):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(json.loads(self.requests[0].content), payload)
 
+    def test_keep_off_without_times_forwarded(self):
+        payload = {'name': 'Infrared', 'mode': 'off'}
+        response = self.client.put('/schedules/2?source=hardware', headers={'X-Enclosure-Control': '1'}, json=payload)
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(json.loads(self.requests[0].content), payload)
+
     def test_sun_without_times(self):
         response = self.client.put('/schedules/2?source=hardware', headers={'X-Enclosure-Control': '1'}, json={'name': 'Heat', 'mode': 'sun'})
         self.assertEqual(response.status_code, 200)

@@ -329,9 +329,9 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
                 raise HTTPException(413, "Schedule request too large")
         try:
             body = json.loads(raw)
-            if body.get('mode') not in ('auto', 'sun', 'custom'):
+            if body.get('mode') not in ('auto', 'sun', 'custom', 'off'):
                 raise ValueError()
-            if body['mode'] != 'sun' and (any(not re.fullmatch(
+            if body['mode'] in ('auto', 'custom') and (any(not re.fullmatch(
                     r"(?:[01]\d|2[0-3]):[0-5]\d", body.get(k, "")) for k in ('on_time', 'off_time'))
                     or body['on_time'] == body['off_time']):
                 raise ValueError()
@@ -339,7 +339,7 @@ def create_app(client=None, simulation_enabled=None, live_enabled=None):
                     not 1 <= len(body['name'].strip()) <= 60 or any(ord(c) < 32 for c in body['name'])):
                 raise ValueError()
         except (ValueError, TypeError, AttributeError):
-            raise HTTPException(400, 'Choose a valid name, sun/custom mode, and distinct HH:MM times for custom schedules')
+            raise HTTPException(400, 'Choose a valid name, sun/custom/off mode, and distinct HH:MM times for custom schedules')
         return await command(request, f"/schedules/{relay_id}",
                              {k: body[k] for k in ('on_time', 'off_time', 'mode', 'name') if k in body})
 

@@ -42,3 +42,21 @@ class TimingTests(unittest.TestCase):
                 self.assertEqual(namespace['SENSOR_READ_INTERVAL'], 2.25)
             else:
                 self.assertIn('"sensor_read_interval": 2.25', content)
+
+    def test_relay_switch_delay_allows_zero_and_fractional_seconds(self):
+        for value in (0, .25, 1, 10):
+            self.document['settings']['relay_switch_delay']['seconds'] = value
+            self.assertEqual(sync.validate(self.document)['relay_switch_delay'], value)
+
+    def test_relay_switch_delay_rejects_invalid_values(self):
+        for value in (-1, 10.1, True, '1', float('nan'), float('inf')):
+            with self.subTest(value=value):
+                self.document['settings']['relay_switch_delay']['seconds'] = value
+                with self.assertRaises(ValueError):
+                    sync.validate(self.document)
+
+    def test_relay_batch_must_fit_schedule_check_interval(self):
+        self.document['settings']['relay_switch_delay']['seconds'] = 1
+        self.document['settings']['relay_schedule_check_interval']['seconds'] = 3
+        with self.assertRaises(ValueError):
+            sync.validate(self.document)
